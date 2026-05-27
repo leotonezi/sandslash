@@ -375,7 +375,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - One finding per missing tag; all in `Category::SocialTags`.
 - Verify: fixture-based unit tests.
 
-### 2.2 Images auditor (`src/audit/images.rs`)
+### ✓ 2.2 Images auditor (`src/audit/images.rs`)
 - Check each `<img>` has `alt`. Rules: missing `alt` attr = Warning; empty `alt=""` on content images = Info. Skip data URIs.
 - Verify: fixture tests including svg/data-uri/no-alt cases.
 

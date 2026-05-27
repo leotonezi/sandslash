@@ -23,8 +23,8 @@ pub trait PageAuditor: Send + Sync {
     fn audit(&self, page: &PageData, dom: &Dom) -> Vec<Finding>;
 }
 
-#[async_trait]
 #[allow(dead_code)]
+#[async_trait]
 pub trait SiteAuditor: Send + Sync {
     fn id(&self) -> &'static str;
     fn category(&self) -> Category;
@@ -44,6 +44,7 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
         Box::new(headings::HeadingsAuditor),
         Box::new(https::HttpsAuditor),
         Box::new(opengraph::OpengraphAuditor),
+        Box::new(images::ImagesAuditor),
     ]
 }
 

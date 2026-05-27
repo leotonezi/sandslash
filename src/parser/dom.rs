@@ -87,6 +87,7 @@ impl Dom {
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn meta_property(&self, key: &str) -> Option<String> {
         let sel = Selector::parse(&format!("meta[property='{key}']")).ok()?;
         self.html
@@ -96,6 +97,7 @@ impl Dom {
             .map(|s| s.trim().to_owned())
     }
 
+    #[allow(dead_code)]
     pub fn meta_name(&self, key: &str) -> Option<String> {
         let sel = Selector::parse(&format!("meta[name='{key}']")).ok()?;
         self.html
