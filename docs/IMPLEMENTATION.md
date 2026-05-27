@@ -223,11 +223,11 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 
 ---
 
-## Phase 1 — MVP: one URL, three pure auditors, JSON output (target: 2 days)
+## ✓ Phase 1 — MVP: one URL, three pure auditors, JSON output (DONE)
 
 Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https audits, emits JSON.
 
-### 1.1 Minimal HTTP fetcher (`src/fetcher/mod.rs`, `src/fetcher/client.rs`)
+### ✓ 1.1 Minimal HTTP fetcher (`src/fetcher/mod.rs`, `src/fetcher/client.rs`)
 - **Files**: `src/fetcher/mod.rs` (re-exports), `src/fetcher/client.rs`.
 - Build:
   ```rust
@@ -250,7 +250,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 - **[GOTCHA]** `.text()` mangles non-UTF-8. Log warning if `Content-Type` charset isn't UTF-8, continue. Fix in Phase 4.
 - Verify: unit test via `wiremock` — mock server returns fixed HTML, assert `Fetcher::fetch` returns expected `PageData`.
 
-### 1.2 DOM parser (`src/parser/mod.rs`, `src/parser/dom.rs`)
+### ✓ 1.2 DOM parser (`src/parser/mod.rs`, `src/parser/dom.rs`)
 - **Files**: `src/parser/mod.rs`, `src/parser/dom.rs`.
 - Build:
   ```rust
@@ -272,7 +272,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 - **[GOTCHA]** The `!Send` issue WILL bite in Phase 3. Don't hold `Dom` across any `.await` point.
 - Verify: unit tests on fixture HTML strings in `tests/fixtures/`. Test every accessor.
 
-### 1.3 Audit trait + registry (`src/audit/mod.rs`)
+### ✓ 1.3 Audit trait + registry (`src/audit/mod.rs`)
 - **Files**: `src/audit/mod.rs`.
 - Define both traits:
   ```rust
@@ -306,7 +306,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 - Create stub modules `metadata.rs`, `headings.rs`, `https.rs` returning `vec![]`.
 - Verify: `cargo check` green with stubs.
 
-### 1.4 Metadata auditor (`src/audit/metadata.rs`)
+### ✓ 1.4 Metadata auditor (`src/audit/metadata.rs`)
 - Checks: title missing/empty/short(<30)/long(>60); description missing/short(<50)/long(>160); canonical missing/off-host/self-mismatch.
 - Pattern:
   ```rust
@@ -331,14 +331,14 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 - **[GOTCHA]** `.len()` is bytes, not chars. Use `.chars().count()` for Unicode. Document limitation.
 - Verify: unit test per branch (missing, short, long, ok) with fixture HTML.
 
-### 1.5 Headings + HTTPS auditors
+### ✓ 1.5 Headings + HTTPS auditors
 - **Files**: `src/audit/headings.rs`, `src/audit/https.rs`.
 - Headings: count h1 (0=Critical, >1=Warning), detect skipped levels, flag empty headings.
 - HTTPS: check `page.url` scheme; scan `<img>`, `<script>`, `<link>` srcs for `http://` on https pages (mixed content, no network).
 - **[RUST]** Iterator pattern: `windows(2)` over heading levels to detect skips.
 - Verify: unit tests per case.
 
-### 1.6 Scoring (`src/score/mod.rs`)
+### ✓ 1.6 Scoring (`src/score/mod.rs`)
 - Implement `score_page` from plan. Add:
   ```rust
   pub fn score_site(reports: &[PageReport]) -> u8 {
@@ -349,13 +349,13 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 - **[RUST]** `HashMap::from_iter`, `Iterator::sum`, integer-cast pitfalls (`as u8` truncates — clamp first).
 - Verify: zero findings → score 100; one Critical penalty-30 Metadata finding → expected computed score.
 
-### 1.7 JSON reporter (`src/report/mod.rs`, `src/report/json.rs`)
+### ✓ 1.7 JSON reporter (`src/report/mod.rs`, `src/report/json.rs`)
 - `pub fn write_json<W: std::io::Write>(report: &AuditReport, w: W) -> Result<()>`
 - Use `serde_json::to_writer_pretty`. Use `chrono::Utc::now().to_rfc3339()` for `crawled_at`.
 - **[RUST]** `Write` trait (sync), generic functions vs trait objects.
 - Verify: unit test serializing a tiny `AuditReport`, assert expected JSON keys exist.
 
-### 1.8 Single-page pipeline (`src/pipeline.rs` or `src/lib.rs`)
+### ✓ 1.8 Single-page pipeline (`src/pipeline.rs` or `src/lib.rs`)
 - Expose `pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport>`.
 - Sequence: build Fetcher → fetch root → parse Dom → run page_auditors → score_page → wrap in AuditReport → write JSON.
 - Update `main.rs` to call `run(config).await`.

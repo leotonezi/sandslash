@@ -52,6 +52,14 @@ Rules for acceptance criteria:
 - At least one criterion must be a test: "unit test covers X case" or "integration test verifies Y."
 - Include the verify step from IMPLEMENTATION.md verbatim as a criterion.
 
+After human approves the spec card, create a GitHub issue:
+```bash
+gh issue create \
+  --title "feat: phase X step Y — <title>" \
+  --body "<spec card verbatim>"
+```
+Report the issue number — it becomes part of the branch name (`feat/issue-<N>-...`).
+
 ---
 
 ## Mode 2 — Task decomposition (after sign-off)

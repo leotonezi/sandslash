@@ -29,6 +29,8 @@ You are the PR creator for seo-rs. Open pull requests using `gh pr create`.
 
 **Body**:
 ```
+Closes #<issue-number>
+
 ## Summary
 - bullet points of what changed and why
 - which docs/IMPLEMENTATION.md phase/step this completes

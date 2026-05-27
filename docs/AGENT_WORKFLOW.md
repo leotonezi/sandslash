@@ -30,13 +30,20 @@ Open questions: <anything needing human decision>
 **YOU review and approve this card before anything else happens.**
 Resolve open questions. If scope is wrong, push back — change the spec, not the code.
 
+Once approved, `project-planner` creates a GitHub issue with the spec card as body:
+```bash
+gh issue create --title "feat: phase X step Y — <title>" --body "<spec card>"
+```
+The issue number becomes the canonical reference for this step. Branch name includes it.
+
 ### 3. Create feature branch
-Only after step 2 is approved:
+Only after step 2 is approved and issue is created:
 ```bash
 git checkout development
 rtk git pull origin development
-git checkout -b feat/phase-<P>-step-<S>-<short-slug>
+git checkout -b feat/issue-<N>-phase-<P>-step-<S>-<short-slug>
 ```
+`<N>` is the GitHub issue number from step 2.
 
 ### 4. Decompose with project-planner
 Invoke `project-planner` again with the approved spec card. It produces a task breakdown:
@@ -109,9 +116,9 @@ Invoke `pr-creator`. It will:
 ## Branch Naming
 
 ```
-feat/phase-<P>-step-<S>-<short-slug>   # step from docs/IMPLEMENTATION.md
-fix/<short-slug>                        # bug fix
-chore/<short-slug>                      # tooling, refactor, docs
+feat/issue-<N>-phase-<P>-step-<S>-<short-slug>   # step from docs/IMPLEMENTATION.md
+fix/issue-<N>-<short-slug>                        # bug fix
+chore/<short-slug>                                # tooling, refactor, docs (no issue needed)
 ```
 
 ---
@@ -130,12 +137,12 @@ docs/IMPLEMENTATION.md — Step 3.4: Per-host rate limiter
        [ ] DashMap entry guard dropped before .await (no deadlock)
        [ ] Integration test: 10 requests at qps=2 take ≥ 4s wall time
      Gotchas: MUST clone Arc out of DashMap before awaiting
-   YOU approve → branch created
-3. git checkout -b feat/phase-3-step-3.4-rate-limiter
+   YOU approve → gh issue create → issue #7 created
+3. git checkout -b feat/issue-7-phase-3-step-3.4-rate-limiter
 4. project-planner decomposes into subtasks
 5. rust-worker receives spec card + subtasks → implements
 6. feature-evaluator checks each criterion binary ✓/✗
 7. build-validator → fmt + clippy -D warnings + tests + release build
 8. mark ✓ 3.4 in docs/IMPLEMENTATION.md
-9. pr-creator      → PR to development with spec criteria in body
+9. pr-creator → PR "Closes #7" to development
 ```
