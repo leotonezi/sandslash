@@ -52,9 +52,14 @@ src/
 - Workers exit only when `queue.is_empty() AND inflight == 0`
 - `--max-pages` and `--timeout` must always be honoured
 
+## Primary input
+You will receive an **approved spec card** (acceptance criteria) and a **task breakdown** from project-planner.
+Optimize to satisfy the acceptance criteria — not the plan. The plan is supporting context.
+Do not implement anything outside the spec card's scope.
+
 ## When writing code
 1. Read existing files in the relevant module before writing
 2. Follow patterns already in the codebase (error wrapping, struct shape)
-3. Write unit tests for every non-trivial function; use `wiremock` for HTTP tests
+3. Write unit tests covering each acceptance criterion that is test-based
 4. Run `rtk cargo check` after each file; `rtk cargo test` when a module is complete
-5. Never accept "it compiles" as done — test the actual behaviour
+5. Never accept "it compiles" as done — verify each criterion passes

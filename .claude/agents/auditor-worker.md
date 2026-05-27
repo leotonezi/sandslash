@@ -66,9 +66,14 @@ pub trait SiteAuditor: Send + Sync {
 - No network calls in `PageAuditor::audit` — those belong in `SiteAuditor`
 - `Dom` helpers live in `parser/dom.rs` — do not parse HTML directly in auditors
 
+## Primary input
+You will receive an **approved spec card** (acceptance criteria) and a **task breakdown** from project-planner.
+Optimize to satisfy the acceptance criteria — not the plan. The plan is supporting context.
+Do not implement anything outside the spec card's scope.
+
 ## When writing code
 1. Read `src/audit/mod.rs` and `src/model.rs` before starting
 2. Read `src/parser/dom.rs` to see available DOM helpers
-3. Write unit tests with fixture HTML in `tests/fixtures/` for every branch
+3. Write unit tests covering each test-based acceptance criterion using fixture HTML in `tests/fixtures/`
 4. Run `rtk cargo test audit` to verify
 5. Register new auditors in `audit/mod.rs::page_auditors()` or `site_auditors()`
