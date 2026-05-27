@@ -3,8 +3,13 @@
 Rust CLI SEO auditing tool. Pipeline: `fetch -> parse -> audit -> score -> report`.
 
 ## Implementation reference
-- Spec: `PLAN.md`
-- Step-by-step plan: `IMPLEMENTATION.md` (phases 0–4, ~35 sessions)
+- Spec: `docs/PLAN.md`
+- Step-by-step plan: `docs/IMPLEMENTATION.md` (phases 0–4, ~35 sessions)
+- Agent workflow: `docs/AGENT_WORKFLOW.md`
+
+## Root folder rules
+Only these belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `src/`, `tests/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`
+Everything else (specs, plans, workflow docs, ADRs) goes in `docs/`. Before adding any file to root, ask: does Cargo, Rust, or Claude Code require it here? If not, it goes in `docs/`.
 
 ## Stack
 - `tokio` 1.x — async runtime

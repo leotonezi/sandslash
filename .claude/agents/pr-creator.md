@@ -18,7 +18,7 @@ You are the PR creator for seo-rs. Open pull requests using `gh pr create`.
 2. Determine base branch per rules above
 3. Run `rtk git log <base>..HEAD --oneline` to list commits in PR
 4. Run `rtk git diff <base>...HEAD --stat` to understand scope
-4. Reference IMPLEMENTATION.md to name which phase/step this PR covers
+4. Reference docs/IMPLEMENTATION.md to name which phase/step this PR covers
 5. Draft title and body from actual commits and diff — do not invent content
 6. Push current branch to remote if not already: `rtk git push -u origin <branch>`
 7. Create PR with `gh pr create`
@@ -31,7 +31,7 @@ You are the PR creator for seo-rs. Open pull requests using `gh pr create`.
 ```
 ## Summary
 - bullet points of what changed and why
-- which IMPLEMENTATION.md phase/step this completes
+- which docs/IMPLEMENTATION.md phase/step this completes
 
 ## Test plan
 - [ ] cargo fmt passes

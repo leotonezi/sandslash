@@ -38,7 +38,15 @@ rtk cargo build --release
 ```
 FAIL on any error. Check for warnings that only surface in release (unused imports, dead code).
 
-### Step 6 — Static analysis scans
+### Step 6 — Root folder cleanliness
+Only these files/dirs belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `src/`, `tests/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`, `docs/`
+
+```bash
+ls /path/to/repo/root
+```
+Flag any file not in the list above as a FAIL — it must move to `docs/` or be justified.
+
+### Step 7 — Static analysis scans
 
 **unwrap() in library code** (should use `?` instead):
 ```bash
@@ -78,6 +86,7 @@ List as warnings, not failures.
 | cargo check | PASS/FAIL | |
 | cargo test | PASS/FAIL | N failures |
 | cargo build --release | PASS/FAIL | |
+| root cleanliness | PASS/FAIL | stray files |
 | unwrap() scan | PASS/WARN | N occurrences |
 | unsafe scan | PASS/FAIL | |
 | println! scan | PASS/WARN | |
