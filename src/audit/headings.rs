@@ -1,12 +1,16 @@
-use crate::audit::{finding, PageAuditor};
+use crate::audit::{PageAuditor, finding};
 use crate::model::{Category, Finding, PageData, Severity};
 use crate::parser::Dom;
 
 pub struct HeadingsAuditor;
 
 impl PageAuditor for HeadingsAuditor {
-    fn id(&self) -> &'static str { "headings" }
-    fn category(&self) -> Category { Category::Structure }
+    fn id(&self) -> &'static str {
+        "headings"
+    }
+    fn category(&self) -> Category {
+        Category::Structure
+    }
 
     fn audit(&self, _page: &PageData, dom: &Dom) -> Vec<Finding> {
         let mut out = Vec::new();
@@ -15,12 +19,18 @@ impl PageAuditor for HeadingsAuditor {
         let h1_count = headings.iter().filter(|(l, _)| *l == 1).count();
         match h1_count {
             0 => out.push(finding(
-                "headings.no-h1", Category::Structure, Severity::Critical, 40,
+                "headings.no-h1",
+                Category::Structure,
+                Severity::Critical,
+                40,
                 "Page has no <h1>",
             )),
             1 => {}
             n => out.push(finding(
-                "headings.multiple-h1", Category::Structure, Severity::Warning, 20,
+                "headings.multiple-h1",
+                Category::Structure,
+                Severity::Warning,
+                20,
                 format!("Page has {n} <h1> elements; expected exactly 1"),
             )),
         }
@@ -29,19 +39,30 @@ impl PageAuditor for HeadingsAuditor {
         for (level, text) in &headings {
             if text.trim().is_empty() {
                 out.push(finding(
-                    "headings.empty", Category::Structure, Severity::Warning, 10,
+                    "headings.empty",
+                    Category::Structure,
+                    Severity::Warning,
+                    10,
                     format!("<h{level}> is empty"),
                 ));
             }
         }
 
         // Detect skipped levels: collect unique levels present, sorted
-        let mut levels: Vec<u8> = headings.iter().map(|(l, _)| *l).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+        let mut levels: Vec<u8> = headings
+            .iter()
+            .map(|(l, _)| *l)
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect();
         levels.sort();
         for window in levels.windows(2) {
             if window[1] > window[0] + 1 {
                 out.push(finding(
-                    "headings.skipped-level", Category::Structure, Severity::Warning, 10,
+                    "headings.skipped-level",
+                    Category::Structure,
+                    Severity::Warning,
+                    10,
                     format!("Heading level skipped: h{} → h{}", window[0], window[1]),
                 ));
             }

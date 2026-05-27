@@ -27,7 +27,10 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
 
     let page_report = score_page(page_data.url.clone(), findings);
 
-    let ctx = AuditContext { config: &config, fetcher: &fetcher };
+    let ctx = AuditContext {
+        config: &config,
+        fetcher: &fetcher,
+    };
     let mut all_findings = page_report.findings.clone();
     for auditor in crate::audit::site_auditors() {
         let mut f = auditor.audit(&page_data, &ctx).await;

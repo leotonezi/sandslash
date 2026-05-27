@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use url::Url;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CrawlConfig {
     pub root: Url,
     pub depth: u32,

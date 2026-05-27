@@ -370,7 +370,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 
 Goal: all single-page auditors, polished scoring, colored terminal output, robots/sitemap for root URL.
 
-### 2.1 OpenGraph + Twitter auditor (`src/audit/opengraph.rs`)
+### ✓ 2.1 OpenGraph + Twitter auditor (`src/audit/opengraph.rs`)
 - Check presence of `og:title`, `og:description`, `og:image`, `og:url`, `twitter:card`.
 - One finding per missing tag; all in `Category::SocialTags`.
 - Verify: fixture-based unit tests.

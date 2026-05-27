@@ -4,11 +4,11 @@ use crate::model::{Category, Finding, PageReport};
 use url::Url;
 
 pub fn score_page(url: Url, findings: Vec<Finding>) -> PageReport {
-    let mut cat: HashMap<Category, i32> =
-        Category::all().map(|c| (c, 100)).collect();
+    let mut cat: HashMap<Category, i32> = Category::all().map(|c| (c, 100)).collect();
 
     for f in &findings {
-        *cat.get_mut(&f.category).expect("all categories initialized") -= f.penalty as i32;
+        *cat.get_mut(&f.category)
+            .expect("all categories initialized") -= f.penalty as i32;
     }
 
     for v in cat.values_mut() {
@@ -23,7 +23,12 @@ pub fn score_page(url: Url, findings: Vec<Finding>) -> PageReport {
     let score = (weighted.round() as i32).clamp(0, 100) as u8;
     let category_scores = cat.iter().map(|(&c, &s)| (c, s as u8)).collect();
 
-    PageReport { url, findings, category_scores, score }
+    PageReport {
+        url,
+        findings,
+        category_scores,
+        score,
+    }
 }
 
 pub fn score_site(reports: &[PageReport]) -> u8 {
@@ -39,7 +44,9 @@ mod tests {
     use super::*;
     use crate::model::{Category, Severity};
 
-    fn url() -> Url { "https://example.com/".parse().unwrap() }
+    fn url() -> Url {
+        "https://example.com/".parse().unwrap()
+    }
 
     #[test]
     fn no_findings_scores_100() {
@@ -59,7 +66,10 @@ mod tests {
         }];
         let report = score_page(url(), findings);
         assert!(report.score < 100);
-        assert_eq!(*report.category_scores.get(&Category::Metadata).unwrap(), 70);
+        assert_eq!(
+            *report.category_scores.get(&Category::Metadata).unwrap(),
+            70
+        );
         // weighted: Metadata contributes 20% * 70 = 14, rest 80% * 100 = 80 → total 94
         assert_eq!(report.score, 94);
     }
@@ -67,13 +77,16 @@ mod tests {
     #[test]
     fn score_site_returns_mean() {
         let r1 = score_page(url(), vec![]);
-        let r2 = score_page(url(), vec![Finding {
-            check_id: "title.missing",
-            category: Category::Metadata,
-            severity: Severity::Critical,
-            message: "no title".into(),
-            penalty: 100,
-        }]);
+        let r2 = score_page(
+            url(),
+            vec![Finding {
+                check_id: "title.missing",
+                category: Category::Metadata,
+                severity: Severity::Critical,
+                message: "no title".into(),
+                penalty: 100,
+            }],
+        );
         let site = score_site(&[r1, r2]);
         assert_eq!(site, 90); // (100 + 80) / 2
     }

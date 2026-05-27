@@ -2,21 +2,25 @@ use scraper::{Html, Selector};
 use std::sync::LazyLock;
 
 static SEL_TITLE: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("title").unwrap());
-static SEL_META_DESC: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("meta[name='description']").unwrap());
-static SEL_CANONICAL: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("link[rel='canonical']").unwrap());
+    LazyLock::new(|| Selector::parse("title").expect("invariant: valid CSS selector"));
+static SEL_META_DESC: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("meta[name='description']").expect("invariant: valid CSS selector")
+});
+static SEL_CANONICAL: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("link[rel='canonical']").expect("invariant: valid CSS selector")
+});
 static SEL_IMG: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("img").unwrap());
+    LazyLock::new(|| Selector::parse("img").expect("invariant: valid CSS selector"));
+#[allow(dead_code)]
 static SEL_A: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("a[href]").unwrap());
+    LazyLock::new(|| Selector::parse("a[href]").expect("invariant: valid CSS selector"));
 static SEL_SCRIPT_SRC: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("script[src]").unwrap());
+    LazyLock::new(|| Selector::parse("script[src]").expect("invariant: valid CSS selector"));
 static SEL_LINK_HREF: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("link[href]").unwrap());
+    LazyLock::new(|| Selector::parse("link[href]").expect("invariant: valid CSS selector"));
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ImgInfo {
     pub src: String,
     pub alt: Option<String>,
@@ -28,7 +32,9 @@ pub struct Dom {
 
 impl Dom {
     pub fn parse(html: &str) -> Self {
-        Self { html: Html::parse_document(html) }
+        Self {
+            html: Html::parse_document(html),
+        }
     }
 
     pub fn title(&self) -> Option<String> {
@@ -57,7 +63,8 @@ impl Dom {
     pub fn headings(&self) -> Vec<(u8, String)> {
         let mut result = Vec::new();
         for level in 1u8..=6 {
-            let sel = Selector::parse(&format!("h{level}")).unwrap();
+            let sel = Selector::parse(&format!("h{level}"))
+                .expect("invariant: h1–h6 are valid selectors");
             for el in self.html.select(&sel) {
                 let text = el.text().collect::<String>().trim().to_owned();
                 result.push((level, text));
@@ -69,6 +76,7 @@ impl Dom {
         result
     }
 
+    #[allow(dead_code)]
     pub fn images(&self) -> Vec<ImgInfo> {
         self.html
             .select(&SEL_IMG)
@@ -80,7 +88,7 @@ impl Dom {
     }
 
     pub fn meta_property(&self, key: &str) -> Option<String> {
-        let sel = Selector::parse(&format!("meta[property='{key}']")).unwrap();
+        let sel = Selector::parse(&format!("meta[property='{key}']")).ok()?;
         self.html
             .select(&sel)
             .next()
@@ -89,7 +97,7 @@ impl Dom {
     }
 
     pub fn meta_name(&self, key: &str) -> Option<String> {
-        let sel = Selector::parse(&format!("meta[name='{key}']")).unwrap();
+        let sel = Selector::parse(&format!("meta[name='{key}']")).ok()?;
         self.html
             .select(&sel)
             .next()
@@ -97,6 +105,7 @@ impl Dom {
             .map(|s| s.trim().to_owned())
     }
 
+    #[allow(dead_code)]
     pub fn links(&self) -> Vec<String> {
         self.html
             .select(&SEL_A)
