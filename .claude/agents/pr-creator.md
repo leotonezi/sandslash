@@ -38,8 +38,6 @@ You are the PR creator for seo-rs. Open pull requests using `gh pr create`.
 - [ ] cargo clippy -D warnings passes
 - [ ] cargo test passes
 - [ ] [any specific manual checks for this feature]
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
 ## Rules
