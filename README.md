@@ -3,7 +3,7 @@
 Rust CLI for SEO auditing. Fetches a page, parses the DOM, runs a suite of checks, and emits a scored JSON report.
 
 ```
-$ seo-rs https://example.com -o report.json
+$ sandslash https://example.com -o report.json
 ```
 
 ---
@@ -23,7 +23,7 @@ cargo install --path .
 ## Usage
 
 ```
-seo-rs <URL> [OPTIONS]
+sandslash <URL> [OPTIONS]
 ```
 
 ### Options
@@ -35,7 +35,7 @@ seo-rs <URL> [OPTIONS]
 | `-c, --concurrency <N>` | `8` | Concurrent workers |
 | `--rate <N>` | `2` | Requests per second per host |
 | `--redis-url <URL>` | — | Redis URL for crawl frontier (env: `REDIS_URL`) |
-| `--user-agent <UA>` | seo-rs/version | Custom User-Agent |
+| `--user-agent <UA>` | `sandslash/<version>` | Custom User-Agent |
 | `--timeout <secs>` | `30` | Per-request timeout |
 | `--max-pages <N>` | — | Cap pages crawled |
 | `--ignore-robots` | false | Skip robots.txt |
@@ -47,16 +47,16 @@ seo-rs <URL> [OPTIONS]
 
 ```bash
 # Audit one page, print JSON to stdout
-seo-rs https://example.com
+sandslash https://example.com
 
 # Audit one page, write report to file
-seo-rs https://example.com -o report.json
+sandslash https://example.com -o report.json
 
 # Crawl 3 levels deep, 4 workers, cap at 50 pages
-seo-rs https://example.com -d 3 -c 4 --max-pages 50 -o report.json
+sandslash https://example.com -d 3 -c 4 --max-pages 50 -o report.json
 
 # Verbose tracing output
-RUST_LOG=seo_rs=debug seo-rs https://example.com
+RUST_LOG=sandslash=debug sandslash https://example.com
 ```
 
 ---
@@ -177,8 +177,8 @@ JSON report structure:
 Structured logs via `tracing`. Control verbosity with `RUST_LOG`:
 
 ```bash
-RUST_LOG=seo_rs=info seo-rs https://example.com   # default
-RUST_LOG=seo_rs=debug seo-rs https://example.com  # verbose
+RUST_LOG=sandslash=info sandslash https://example.com   # default
+RUST_LOG=sandslash=debug sandslash https://example.com  # verbose
 ```
 
 ---
