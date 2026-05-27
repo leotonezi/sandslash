@@ -65,7 +65,9 @@ impl Fetcher {
 fn extract_headers(map: &HeaderMap) -> Headers {
     map.iter()
         .filter_map(|(k, v)| {
-            v.to_str().ok().map(|val| (k.as_str().to_lowercase(), val.to_owned()))
+            v.to_str()
+                .ok()
+                .map(|val| (k.as_str().to_lowercase(), val.to_owned()))
         })
         .collect()
 }
@@ -113,7 +115,12 @@ mod tests {
 
         assert_eq!(page.status, 200);
         assert!(page.html.contains("hello"));
-        assert!(page.headers.get("content-type").unwrap().contains("text/html"));
+        assert!(
+            page.headers
+                .get("content-type")
+                .unwrap()
+                .contains("text/html")
+        );
     }
 
     #[tokio::test]

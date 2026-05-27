@@ -16,6 +16,7 @@ use crate::fetcher::Fetcher;
 use crate::model::{Category, Finding, PageData, Severity};
 use crate::parser::Dom;
 
+#[allow(dead_code)]
 pub trait PageAuditor: Send + Sync {
     fn id(&self) -> &'static str;
     fn category(&self) -> Category;
@@ -23,6 +24,7 @@ pub trait PageAuditor: Send + Sync {
 }
 
 #[async_trait]
+#[allow(dead_code)]
 pub trait SiteAuditor: Send + Sync {
     fn id(&self) -> &'static str;
     fn category(&self) -> Category;
@@ -30,7 +32,9 @@ pub trait SiteAuditor: Send + Sync {
 }
 
 pub struct AuditContext<'a> {
+    #[allow(dead_code)]
     pub config: &'a CrawlConfig,
+    #[allow(dead_code)]
     pub fetcher: &'a Fetcher,
 }
 
@@ -39,11 +43,12 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
         Box::new(metadata::MetadataAuditor),
         Box::new(headings::HeadingsAuditor),
         Box::new(https::HttpsAuditor),
+        Box::new(opengraph::OpengraphAuditor),
     ]
 }
 
 pub fn site_auditors() -> Vec<Box<dyn SiteAuditor>> {
-    vec![]  // Phase 2: robots, sitemap, links
+    vec![] // Phase 2: robots, sitemap, links
 }
 
 pub(crate) fn finding(
@@ -53,5 +58,11 @@ pub(crate) fn finding(
     penalty: u8,
     message: impl Into<String>,
 ) -> Finding {
-    Finding { check_id, category, severity, message: message.into(), penalty }
+    Finding {
+        check_id,
+        category,
+        severity,
+        message: message.into(),
+        penalty,
+    }
 }

@@ -4,8 +4,7 @@ use crate::error::{Result, SeoError};
 use crate::model::AuditReport;
 
 pub fn write_json<W: Write>(report: &AuditReport, writer: W) -> Result<()> {
-    serde_json::to_writer_pretty(writer, report)
-        .map_err(|e| SeoError::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))
+    serde_json::to_writer_pretty(writer, report).map_err(|e| SeoError::Io(std::io::Error::other(e)))
 }
 
 #[cfg(test)]

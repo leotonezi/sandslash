@@ -1,19 +1,26 @@
-use crate::audit::{finding, PageAuditor};
+use crate::audit::{PageAuditor, finding};
 use crate::model::{Category, Finding, PageData, Severity};
 use crate::parser::Dom;
 
 pub struct HttpsAuditor;
 
 impl PageAuditor for HttpsAuditor {
-    fn id(&self) -> &'static str { "https" }
-    fn category(&self) -> Category { Category::Security }
+    fn id(&self) -> &'static str {
+        "https"
+    }
+    fn category(&self) -> Category {
+        Category::Security
+    }
 
     fn audit(&self, page: &PageData, dom: &Dom) -> Vec<Finding> {
         let mut out = Vec::new();
 
         if page.url.scheme() != "https" {
             out.push(finding(
-                "https.insecure", Category::Security, Severity::Critical, 40,
+                "https.insecure",
+                Category::Security,
+                Severity::Critical,
+                40,
                 format!("Page served over {}; HTTPS required", page.url.scheme()),
             ));
             return out; // mixed-content only relevant on https pages
@@ -27,7 +34,10 @@ impl PageAuditor for HttpsAuditor {
 
         for url in mixed {
             out.push(finding(
-                "https.mixed-content", Category::Security, Severity::Warning, 20,
+                "https.mixed-content",
+                Category::Security,
+                Severity::Warning,
+                20,
                 format!("Mixed content: http resource on https page — {url}"),
             ));
         }
