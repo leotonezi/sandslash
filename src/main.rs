@@ -1,7 +1,13 @@
+mod audit;
 mod cli;
 mod config;
 mod error;
+mod fetcher;
 mod model;
+mod parser;
+mod pipeline;
+mod report;
+mod score;
 
 use anyhow::Context;
 use clap::Parser;
@@ -17,7 +23,9 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = cli::Cli::parse();
     let config = cli.into_config().context("invalid configuration")?;
-    tracing::info!(?config, "starting audit");
+    tracing::info!(root = %config.root, depth = config.depth, "starting audit");
+
+    pipeline::run(config).await?;
 
     Ok(())
 }
