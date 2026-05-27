@@ -76,7 +76,12 @@ Invoke `build-validator`. It runs:
 
 If build-validator fails → route to correct worker to fix, re-run build-validator.
 
-### 8. Open PR with pr-creator
+### 8. Mark step done in IMPLEMENTATION.md
+Before opening the PR, mark the completed step in `docs/IMPLEMENTATION.md`:
+- `### ✓ X.Y <title>` for the step
+- `## ✓ Phase N — <title> (DONE)` if all steps in the phase are complete
+
+### 9. Open PR with pr-creator
 Invoke `pr-creator`. It will:
 - Verify branch is not `master` or `development`
 - Target `development`
@@ -96,7 +101,8 @@ Invoke `pr-creator`. It will:
 | `auditor-worker` | Step 5 — any `src/audit/` work |
 | `feature-evaluator` | Step 6 — always, binary checklist against spec |
 | `build-validator` | Step 7 — always, before PR |
-| `pr-creator` | Step 8 — always |
+| *(you)* | Step 8 — mark ✓ in IMPLEMENTATION.md |
+| `pr-creator` | Step 9 — always |
 
 ---
 
@@ -130,5 +136,6 @@ docs/IMPLEMENTATION.md — Step 3.4: Per-host rate limiter
 5. rust-worker receives spec card + subtasks → implements
 6. feature-evaluator checks each criterion binary ✓/✗
 7. build-validator → fmt + clippy -D warnings + tests + release build
-8. pr-creator → PR to development with spec criteria in body
+8. mark ✓ 3.4 in docs/IMPLEMENTATION.md
+9. pr-creator      → PR to development with spec criteria in body
 ```

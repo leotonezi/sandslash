@@ -53,6 +53,12 @@ use anyhow::{Context, Result};
 - Redis-dependent tests: `#[ignore]` with doc comment
 - Run tests: `rtk cargo test`
 
+## Progress tracking
+Mark steps done in `docs/IMPLEMENTATION.md` immediately when complete:
+- Step done: `### ✓ X.Y <title>`
+- Phase done: `## ✓ Phase N — <title> (DONE)`
+Do this before committing. Never batch-mark after the fact.
+
 ## Agent workflow
 1. **project-planner** — plan the step, resolve design questions
 2. **rust-worker** or **auditor-worker** — implement

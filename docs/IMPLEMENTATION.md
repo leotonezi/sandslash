@@ -4,11 +4,11 @@ A phase-by-phase, session-sized breakdown. Each micro-step fits in one focused c
 
 ---
 
-## Phase 0 — Scaffolding (target: 0.5 day)
+## ✓ Phase 0 — Scaffolding (DONE)
 
 Goal: `cargo run -- https://example.com` parses args, builds config, emits structured logs. No HTTP yet.
 
-### 0.1 Cargo project + dependency manifest
+### ✓ 0.1 Cargo project + dependency manifest
 - **Files**: `Cargo.toml`, `src/main.rs` (stub), `.gitignore`, `rust-toolchain.toml`
 - Actions:
   1. `cargo init --name seo-rs` (binary crate).
@@ -42,7 +42,7 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 - **[GOTCHA]** `reqwest` defaults to OpenSSL — always use `rustls-tls` for portability.
 - Verify: `cargo build` succeeds. `cargo tree | head -50` sanity-check.
 
-### 0.2 Error type (`src/error.rs`)
+### ✓ 0.2 Error type (`src/error.rs`)
 - **Files**: `src/error.rs`, register `mod error;` in `main.rs`.
 - Define:
   ```rust
@@ -71,7 +71,7 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 - **[GOTCHA]** Don't `#[from] reqwest::Error` directly — you lose the URL context. Use a struct variant with `#[source]`.
 - Verify: `fn _check() -> Result<()> { Err(SeoError::Config("x".into())) }` + `cargo check`.
 
-### 0.3 Model types (`src/model.rs`)
+### ✓ 0.3 Model types (`src/model.rs`)
 - **Files**: `src/model.rs`, register in `main.rs`.
 - Define:
   ```rust
@@ -131,7 +131,7 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 - **[GOTCHA]** `Url` already implements `Serialize` via the `serde` feature. Verify with a tiny unit test serializing a `Url` to JSON.
 - Verify: `#[test] fn category_weights_sum_to_100()` — assert sum == 100.
 
-### 0.4 Config (`src/config.rs`)
+### ✓ 0.4 Config (`src/config.rs`)
 - **Files**: `src/config.rs`.
 - Define:
   ```rust
@@ -158,7 +158,7 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 - **[RUST]** `concat!` and `env!` are compile-time macros. Config is `Clone` but not `Copy` (contains `String`).
 - Verify: trivial `#[test]` constructing the struct.
 
-### 0.5 CLI (`src/cli.rs`) — clap derive
+### ✓ 0.5 CLI (`src/cli.rs`) — clap derive
 - **Files**: `src/cli.rs`.
 - Define:
   ```rust
@@ -196,7 +196,7 @@ Goal: `cargo run -- https://example.com` parses args, builds config, emits struc
 - **[RUST]** Clap derive vs builder. `env = "..."` for env-var fallback. Consuming `self` in `into_config` avoids clones.
 - Verify: `cargo run -- --help` shows usage; `cargo run -- https://example.com -d 2` prints config via `tracing::info!`.
 
-### 0.6 Logging + main wiring (`src/main.rs`)
+### ✓ 0.6 Logging + main wiring (`src/main.rs`)
 - **Files**: `src/main.rs`.
 - Wire up:
   ```rust
