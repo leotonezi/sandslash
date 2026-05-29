@@ -65,6 +65,7 @@ Do this before committing. Never batch-mark after the fact.
 - Pre-1.0 SemVer (Cargo convention): breaking changes bump **minor**, fixes bump **patch**
 - Never edit version in `Cargo.toml` manually — use `cargo release patch|minor|major --execute`
 - `CHANGELOG.md` is regenerated automatically by git-cliff via the `release.toml` pre-release hook
+- Auto-release fires on every `development`→`master` merge: detects `feat:` commits → minor bump, else patch; builds binaries; creates GitHub Release
 - Full runbook: `docs/RELEASING.md`
 
 ## Agent workflow

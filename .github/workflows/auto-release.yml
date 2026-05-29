@@ -1,0 +1,168 @@
+name: Auto Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      bump_level:
+        description: "Bump level (patch or minor)"
+        required: true
+        type: choice
+        options: [patch, minor]
+      dry_run:
+        description: "Dry run only (no changes pushed)"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bump:
+    name: Bump version
+    # Only run on merged dev→master PRs, or on manual dispatch
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.ref == 'development')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      skipped: ${{ steps.release.outputs.skipped }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-release,git-cliff
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine bump level
+        id: bump
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "level=${{ inputs.bump_level }}" >> "$GITHUB_OUTPUT"
+          else
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            RANGE="${LAST_TAG:+${LAST_TAG}..HEAD}"
+            if git log $RANGE --pretty=format:"%s" | grep -qE "^feat(\([^)]+\))?(!)?:"; then
+              echo "level=minor" >> "$GITHUB_OUTPUT"
+            else
+              echo "level=patch" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Dry run
+        if: inputs.dry_run == 'true'
+        run: cargo release ${{ steps.bump.outputs.level }} --dry-run
+
+      - name: Release
+        id: release
+        if: inputs.dry_run != 'true'
+        run: |
+          cargo release ${{ steps.bump.outputs.level }} --execute --no-confirm
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*= "\(.*\)"/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+
+      - name: Skip (dry run)
+        if: inputs.dry_run == 'true'
+        run: echo "Dry run complete — no changes pushed."
+
+  build:
+    name: Build — ${{ matrix.target }}
+    needs: bump
+    if: needs.bump.outputs.skipped != 'true' && needs.bump.outputs.tag != ''
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.tag }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package binary
+        shell: bash
+        run: |
+          TAG="${{ needs.bump.outputs.tag }}"
+          BINARY_NAME="sandslash-${TAG}-${{ matrix.target }}"
+          cp "target/${{ matrix.target }}/release/sandslash" "${BINARY_NAME}"
+          echo "BINARY_NAME=${BINARY_NAME}" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: ${{ env.BINARY_NAME }}
+          retention-days: 1
+
+  release:
+    name: GitHub Release
+    needs: [bump, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.tag }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract changelog body
+        id: changelog
+        run: |
+          VERSION="${{ needs.bump.outputs.version }}"
+          BODY=$(awk "/^## \[${VERSION}\]/{found=1; next} found && /^## \[/{exit} found{print}" CHANGELOG.md)
+          {
+            echo "body<<EOF"
+            echo "${BODY}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.bump.outputs.tag }}
+          name: ${{ needs.bump.outputs.tag }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: artifacts/sandslash-*
+          fail_on_unmatched_files: true

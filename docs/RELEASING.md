@@ -13,7 +13,18 @@ Tags are cut from **master only**. Flow:
 1. Merge `development` → `master` via PR
 2. From master, run the release command below
 
-## Cutting a release
+## Automatic releases
+
+Merging any PR from `development` into `master` triggers `.github/workflows/auto-release.yml`, which:
+
+1. Detects bump level from commits since last tag: any `feat:` commit → minor, otherwise → patch
+2. Runs `cargo release <level> --execute --no-confirm` (bumps `Cargo.toml`, regenerates `CHANGELOG.md`, commits, tags, pushes)
+3. Builds binaries for `x86_64-unknown-linux-gnu` and `aarch64-apple-darwin`
+4. Creates a GitHub Release with the CHANGELOG body and binary assets
+
+No manual steps needed for standard releases. Use the manual path below only for hotfixes cut directly from master.
+
+## Cutting a release manually
 
 Dry-run first (no changes made):
 
@@ -46,6 +57,14 @@ cargo release major --execute
 - **patch** (`0.1.x`): bug fixes, backwards-compatible
 - **minor** (`0.x.0`): new features or breaking changes (pre-1.0 convention)
 - **major** (`1.0.0`): stable public API — reserved for when the tool is production-ready
+
+## Dry run (auto-release)
+
+To preview what the auto-release would do without pushing:
+
+1. Actions → Auto Release → Run workflow
+2. Set `dry_run = true`, pick `bump_level`
+3. Inspect the cargo-release output
 
 ## Manual re-run (workflow_dispatch)
 
