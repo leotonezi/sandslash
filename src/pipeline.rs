@@ -38,7 +38,7 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     }
 
     let page_report = score_page(page_data.url, all_findings);
-    let site_score = score_site(&[page_report.clone()]);
+    let site_score = score_site(std::slice::from_ref(&page_report));
 
     let report = AuditReport {
         root: config.root.clone(),

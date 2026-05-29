@@ -62,21 +62,19 @@ impl Fetcher {
             let status_code = resp.status();
             let status = status_code.as_u16();
 
-            if status_code.is_redirection() {
-                if let Some(loc_header) = resp.headers().get(LOCATION) {
-                    let loc_str = loc_header
-                        .to_str()
-                        .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
+            if let (true, Some(loc_header)) =
+                (status_code.is_redirection(), resp.headers().get(LOCATION))
+            {
+                let loc_str = loc_header
+                    .to_str()
+                    .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
 
-                    let next = current.join(loc_str).map_err(SeoError::from)?;
+                let next = current.join(loc_str).map_err(SeoError::from)?;
 
-                    // Push current (the intermediate hop) before moving on.
-                    chain.push(current.clone());
-                    current = next;
-                    // Response body is intentionally not read — drop it here.
-                    drop(resp);
-                    continue;
-                }
+                chain.push(current.clone());
+                current = next;
+                drop(resp);
+                continue;
             }
 
             // Terminal response (non-redirect, or redirect without Location).
