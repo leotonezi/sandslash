@@ -385,7 +385,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - Binary path: `SEO_RS_BIN` env (default `../target/release/seo-rs`), temp file for JSON output
 - Verify: `cd frontend && npm install && npm run build && npm run lint` passes; with binary built, `npm run dev` on :3000 and submitting https://example.com returns rendered report with site_score and page blocks
 
-### 2.3 Manual redirect handling (REFACTOR `src/fetcher/client.rs`)
+### ✓ 2.3 Manual redirect handling (REFACTOR `src/fetcher/client.rs`)
 - Switch `Policy::limited(10)` to `Policy::none()`.
 - Implement manual follow loop:
   ```rust
