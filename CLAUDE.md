@@ -8,8 +8,8 @@ Rust CLI SEO auditing tool. Pipeline: `fetch -> parse -> audit -> score -> repor
 - Agent workflow: `docs/AGENT_WORKFLOW.md`
 
 ## Root folder rules
-Only these belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `src/`, `tests/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`
-Everything else (specs, plans, workflow docs, ADRs) goes in `docs/`. Before adding any file to root, ask: does Cargo, Rust, or Claude Code require it here? If not, it goes in `docs/`.
+Only these belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `cliff.toml`, `release.toml`, `CHANGELOG.md`, `src/`, `tests/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`, `frontend/`, `docs/`, `.github/`
+Everything else goes in `docs/`. Before adding any file to root, ask: does Cargo, Rust, a release tool, or Claude Code require it here? If not, it goes in `docs/`.
 
 ## Stack
 - `tokio` 1.x — async runtime
@@ -59,9 +59,19 @@ Mark steps done in `docs/IMPLEMENTATION.md` immediately when complete:
 - Phase done: `## ✓ Phase N — <title> (DONE)`
 Do this before committing. Never batch-mark after the fact.
 
+## Versioning
+
+- Tags are `vX.Y.Z`, cut from `master` only after merging `development` → `master`
+- Pre-1.0 SemVer (Cargo convention): breaking changes bump **minor**, fixes bump **patch**
+- Never edit version in `Cargo.toml` manually — use `cargo release patch|minor|major --execute`
+- `CHANGELOG.md` is regenerated automatically by git-cliff via the `release.toml` pre-release hook
+- Auto-release fires on every `development`→`master` merge: detects `feat:` commits → minor bump, else patch; builds binaries; creates GitHub Release
+- Full runbook: `docs/RELEASING.md`
+
 ## Agent workflow
 1. **project-planner** — plan the step, resolve design questions
 2. **rust-worker** or **auditor-worker** — implement
-3. **feature-evaluator** — verify correctness and Rust quality
-4. **build-validator** — pre-PR check (fmt, clippy -D warnings, tests, release build)
-5. **pr-creator** — open PR
+3. `cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test` — must all pass locally
+4. **feature-evaluator** — verify correctness, Rust quality, and build checks
+5. **build-validator** — pre-PR check (fmt, clippy -D warnings, tests, release build)
+6. **pr-creator** — open PR targeting `development`
