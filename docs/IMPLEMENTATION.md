@@ -417,7 +417,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - **[GOTCHA]** Non-ASCII bytes in `Location` → `to_str()` fails. Decide: fail or skip.
 - Verify: wiremock 3-hop chain test; self-redirect loop test.
 
-### 2.4 Redirects auditor (`src/audit/redirects.rs`)
+### ✓ 2.4 Redirects auditor (`src/audit/redirects.rs`)
 - chain length > 3 = Warning; > 5 = Critical.
 - `SeoError::RedirectLoop` caught at pipeline level → synthetic `PageData` + Critical finding.
 - Verify: unit test on synthetic `PageData { redirect_chain: vec![...] }`.

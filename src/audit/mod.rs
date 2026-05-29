@@ -45,6 +45,7 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
         Box::new(https::HttpsAuditor),
         Box::new(opengraph::OpengraphAuditor),
         Box::new(images::ImagesAuditor),
+        Box::new(redirects::RedirectsAuditor),
     ]
 }
 
