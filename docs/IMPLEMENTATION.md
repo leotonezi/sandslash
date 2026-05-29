@@ -379,6 +379,12 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - Check each `<img>` has `alt`. Rules: missing `alt` attr = Warning; empty `alt=""` on content images = Info. Skip data URIs.
 - Verify: fixture tests including svg/data-uri/no-alt cases.
 
+### ✓ 2.3-ui Next.js audit UI
+- **Files**: `frontend/` (Next.js 14, App Router, TypeScript)
+- URL input + Run Audit button → POSTs to `/api/audit` → shells out to binary via temp file → renders AuditReport
+- Binary path: `SEO_RS_BIN` env (default `../target/release/seo-rs`), temp file for JSON output
+- Verify: `cd frontend && npm install && npm run build && npm run lint` passes; with binary built, `npm run dev` on :3000 and submitting https://example.com returns rendered report with site_score and page blocks
+
 ### 2.3 Manual redirect handling (REFACTOR `src/fetcher/client.rs`)
 - Switch `Policy::limited(10)` to `Policy::none()`.
 - Implement manual follow loop:
