@@ -59,19 +59,32 @@ Route to the correct worker based on what's changing:
 **Pass both to the worker**: approved spec card (primary) + task breakdown from step 4 (supporting context).
 The worker optimizes to satisfy the acceptance criteria, not the plan.
 
-### 6. Evaluate with feature-evaluator
-Invoke `feature-evaluator`. It evaluates each acceptance criterion from step 2 as binary:
+### 6. Pre-push local validation (GATE — runs before feature-evaluator and before any push)
+After implementation, run these locally and fix all failures before proceeding:
+```bash
+cargo fmt -- --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+**All three must be green.** This catches issues that CI would catch, before they reach a PR.
+Fix any failure by routing back to the correct worker, then re-run validation.
+
+### 7. Evaluate with feature-evaluator
+Invoke `feature-evaluator`. It evaluates each acceptance criterion from step 2 as binary **and also verifies that the three commands above pass**:
 
 ```
 [ ] criterion 1 — PASS / FAIL: <reason if fail>
 [ ] criterion 2 — PASS / FAIL
 ...
+[ ] cargo fmt --check — PASS / FAIL
+[ ] cargo clippy --all-targets -D warnings — PASS / FAIL
+[ ] cargo test — PASS / FAIL
 Overall: PASS (all criteria met) / FAIL (N criteria failed)
 ```
 
-If any criterion fails → fix and re-evaluate. Do not proceed to step 7 with any ✗.
+If any criterion fails → fix and re-evaluate. Do not proceed to step 8 with any ✗.
 
-### 7. Validate build with build-validator
+### 8. Validate build with build-validator
 Invoke `build-validator`. It runs:
 - `cargo fmt -- --check`
 - `cargo clippy -- -D warnings`
@@ -83,12 +96,12 @@ Invoke `build-validator`. It runs:
 
 If build-validator fails → route to correct worker to fix, re-run build-validator.
 
-### 8. Mark step done in IMPLEMENTATION.md
+### 9. Mark step done in IMPLEMENTATION.md
 Before opening the PR, mark the completed step in `docs/IMPLEMENTATION.md`:
 - `### ✓ X.Y <title>` for the step
 - `## ✓ Phase N — <title> (DONE)` if all steps in the phase are complete
 
-### 9. Open PR with pr-creator
+### 10. Open PR with pr-creator
 Invoke `pr-creator`. It will:
 - Verify branch is not `master` or `development`
 - Target `development`
@@ -106,10 +119,11 @@ Invoke `pr-creator`. It will:
 | `project-planner` | Step 4 — task decomposition (after approval) |
 | `rust-worker` | Step 5 — fetcher, parser, crawler, engine, scoring, pipeline |
 | `auditor-worker` | Step 5 — any `src/audit/` work |
-| `feature-evaluator` | Step 6 — always, binary checklist against spec |
-| `build-validator` | Step 7 — always, before PR |
-| *(you)* | Step 8 — mark ✓ in IMPLEMENTATION.md |
-| `pr-creator` | Step 9 — always |
+| *(local)* | Step 6 — cargo fmt/clippy/test must pass before proceeding |
+| `feature-evaluator` | Step 7 — binary checklist against spec + verifies fmt/clippy/test |
+| `build-validator` | Step 8 — always, before PR |
+| *(you)* | Step 9 — mark ✓ in IMPLEMENTATION.md |
+| `pr-creator` | Step 10 — always, targets development |
 
 ---
 
