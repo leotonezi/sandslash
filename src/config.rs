@@ -20,9 +20,9 @@ pub struct CrawlConfig {
 
 impl CrawlConfig {
     pub const DEFAULT_UA: &'static str = concat!(
-        "seo-rs/",
+        "sandslash/",
         env!("CARGO_PKG_VERSION"),
-        " (+https://github.com/leonardotonezi/seo-rs)"
+        " (+https://github.com/leotonezi/sandslash)"
     );
 }
 
@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn default_ua_contains_version() {
-        assert!(CrawlConfig::DEFAULT_UA.starts_with("seo-rs/"));
+        assert!(CrawlConfig::DEFAULT_UA.starts_with("sandslash/"));
         assert!(CrawlConfig::DEFAULT_UA.contains(env!("CARGO_PKG_VERSION")));
     }
 }

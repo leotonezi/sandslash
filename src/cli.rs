@@ -5,7 +5,7 @@ use crate::config::CrawlConfig;
 use crate::error::{Result, SeoError};
 
 #[derive(Parser, Debug)]
-#[command(name = "seo-rs", version, about = "SEO audit CLI")]
+#[command(name = "sandslash", version, about = "SEO audit CLI")]
 pub struct Cli {
     /// Target URL to audit.
     pub url: String,
