@@ -50,7 +50,7 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
 }
 
 pub fn site_auditors() -> Vec<Box<dyn SiteAuditor>> {
-    vec![] // Phase 2: robots, sitemap, links
+    vec![Box::new(robots::RobotsAuditor)]
 }
 
 pub(crate) fn finding(

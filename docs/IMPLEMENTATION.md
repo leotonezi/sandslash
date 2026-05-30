@@ -427,7 +427,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - Extend existing `HttpsAuditor`.
 - Verify: fixture test with mixed-content srcs.
 
-### 2.6 Robots auditor (`src/audit/robots.rs`) — first SiteAuditor
+### ✓ 2.6 Robots auditor (`src/audit/robots.rs`) — first SiteAuditor
 - Fetch `{root.origin()}/robots.txt`. Findings: 404 = Warning; `Disallow: /` for `*` = Critical; no `Sitemap:` = Info.
 - Parse manually — look for `User-agent: *` block, `Disallow: /`, any `Sitemap:` lines.
 - **[RUST]** `async_trait` usage, `&dyn SiteAuditor` — async trait boxing cost is acceptable here.
