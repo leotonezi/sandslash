@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HTTPS Clean Test Page</title>
+  <!-- link[href] — https:// resource -->
+  <link rel="stylesheet" href="https://css.example.com/style.css">
+  <!-- script[src] — protocol-relative resource -->
+  <script src="//js.example.com/app.js"></script>
+</head>
+<body>
+  <!-- img[src] — https:// resource -->
+  <img src="https://img.example.com/photo.jpg" alt="photo">
+
+  <!-- iframe[src] — https:// resource -->
+  <iframe src="https://iframe.example.com/frame.html"></iframe>
+
+  <!-- audio[src] — https:// resource -->
+  <audio src="https://audio.example.com/track.mp3"></audio>
+
+  <!-- video[src] — https:// resource -->
+  <video src="https://video.example.com/clip.mp4"></video>
+
+  <!-- source[src] inside video — https:// resource -->
+  <video>
+    <source src="https://source.example.com/clip.webm" type="video/webm">
+  </video>
+
+  <!-- track[src] — https:// resource -->
+  <video>
+    <track src="https://track.example.com/subs.vtt" kind="subtitles">
+  </video>
+
+  <!-- embed[src] — https:// resource -->
+  <embed src="https://embed.example.com/plugin.swf" type="application/x-shockwave-flash">
+
+  <!-- object[data] — https:// resource -->
+  <object data="https://object.example.com/file.pdf" type="application/pdf"></object>
+</body>
+</html>

@@ -422,7 +422,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - `SeoError::RedirectLoop` caught at pipeline level → synthetic `PageData` + Critical finding.
 - Verify: unit test on synthetic `PageData { redirect_chain: vec![...] }`.
 
-### 2.5 Mixed content extension (`src/audit/https.rs`)
+### ✓ 2.5 Mixed content extension (`src/audit/https.rs`)
 - Flag any `http://` resource referenced from an `https://` page.
 - Extend existing `HttpsAuditor`.
 - Verify: fixture test with mixed-content srcs.

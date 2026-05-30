@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mixed Content Test Page</title>
+  <!-- link[href] — http:// resource #1 -->
+  <link rel="stylesheet" href="http://css.example.com/style.css">
+  <!-- script[src] — http:// resource #2 -->
+  <script src="http://js.example.com/app.js"></script>
+</head>
+<body>
+  <!-- img[src] — http:// resource #3 -->
+  <img src="http://img.example.com/photo.jpg" alt="photo">
+
+  <!-- iframe[src] — http:// resource #4 -->
+  <iframe src="http://iframe.example.com/frame.html"></iframe>
+
+  <!-- audio[src] — http:// resource #5 -->
+  <audio src="http://audio.example.com/track.mp3"></audio>
+
+  <!-- video[src] — http:// resource #6 -->
+  <video src="http://video.example.com/clip.mp4"></video>
+
+  <!-- source[src] inside video — http:// resource #7 -->
+  <video>
+    <source src="http://source.example.com/clip.webm" type="video/webm">
+  </video>
+
+  <!-- track[src] — http:// resource #8 -->
+  <video>
+    <track src="http://track.example.com/subs.vtt" kind="subtitles">
+  </video>
+
+  <!-- embed[src] — http:// resource #9 -->
+  <embed src="http://embed.example.com/plugin.swf" type="application/x-shockwave-flash">
+
+  <!-- object[data] — http:// resource #10 -->
+  <object data="http://object.example.com/file.pdf" type="application/pdf"></object>
+</body>
+</html>

@@ -18,6 +18,20 @@ static SEL_SCRIPT_SRC: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("script[src]").expect("invariant: valid CSS selector"));
 static SEL_LINK_HREF: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("link[href]").expect("invariant: valid CSS selector"));
+static SEL_IFRAME_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("iframe[src]").expect("invariant: valid CSS selector"));
+static SEL_AUDIO_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("audio[src]").expect("invariant: valid CSS selector"));
+static SEL_VIDEO_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("video[src]").expect("invariant: valid CSS selector"));
+static SEL_SOURCE_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("source[src]").expect("invariant: valid CSS selector"));
+static SEL_TRACK_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("track[src]").expect("invariant: valid CSS selector"));
+static SEL_EMBED_SRC: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("embed[src]").expect("invariant: valid CSS selector"));
+static SEL_OBJECT_DATA: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("object[data]").expect("invariant: valid CSS selector"));
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -116,24 +130,42 @@ impl Dom {
             .collect()
     }
 
-    /// All resource srcs that could cause mixed content (img, script, link).
+    /// All resource URLs that could cause mixed content on an https page.
+    ///
+    /// Covers: img[src], script[src], link[href], iframe[src], audio[src],
+    /// video[src], source[src], track[src], embed[src], object[data].
     pub fn resource_urls(&self) -> Vec<String> {
-        let mut urls = Vec::new();
-        for el in self.html.select(&SEL_IMG) {
-            if let Some(src) = el.attr("src") {
-                urls.push(src.to_owned());
-            }
-        }
-        for el in self.html.select(&SEL_SCRIPT_SRC) {
-            if let Some(src) = el.attr("src") {
-                urls.push(src.to_owned());
-            }
-        }
-        for el in self.html.select(&SEL_LINK_HREF) {
-            if let Some(href) = el.attr("href") {
-                urls.push(href.to_owned());
-            }
-        }
+        let src_selectors: &[(&LazyLock<Selector>, &str)] = &[
+            (&SEL_IMG, "src"),
+            (&SEL_SCRIPT_SRC, "src"),
+            (&SEL_IFRAME_SRC, "src"),
+            (&SEL_AUDIO_SRC, "src"),
+            (&SEL_VIDEO_SRC, "src"),
+            (&SEL_SOURCE_SRC, "src"),
+            (&SEL_TRACK_SRC, "src"),
+            (&SEL_EMBED_SRC, "src"),
+            (&SEL_OBJECT_DATA, "data"),
+        ];
+
+        let mut urls: Vec<String> = src_selectors
+            .iter()
+            .flat_map(|(sel, attr)| {
+                self.html
+                    .select(sel)
+                    .filter_map(|el| el.attr(attr))
+                    .map(|s| s.to_owned())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        // link[href] uses a different attribute name — append separately
+        urls.extend(
+            self.html
+                .select(&SEL_LINK_HREF)
+                .filter_map(|el| el.attr("href"))
+                .map(|s| s.to_owned()),
+        );
+
         urls
     }
 }
@@ -195,5 +227,75 @@ mod tests {
     fn missing_title_returns_none() {
         let dom = Dom::parse("<html><head></head><body></body></html>");
         assert!(dom.title().is_none());
+    }
+
+    #[test]
+    fn resource_urls_includes_iframe_src() {
+        let dom = Dom::parse(
+            r#"<html><body><iframe src="http://iframe.example.com/frame"></iframe></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://iframe.example.com/frame".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_audio_src() {
+        let dom = Dom::parse(
+            r#"<html><body><audio src="http://audio.example.com/track.mp3"></audio></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://audio.example.com/track.mp3".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_video_src() {
+        let dom = Dom::parse(
+            r#"<html><body><video src="http://video.example.com/clip.mp4"></video></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://video.example.com/clip.mp4".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_source_src() {
+        let dom = Dom::parse(
+            r#"<html><body><video><source src="http://source.example.com/clip.mp4"></video></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://source.example.com/clip.mp4".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_track_src() {
+        let dom = Dom::parse(
+            r#"<html><body><video><track src="http://track.example.com/subs.vtt"></video></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://track.example.com/subs.vtt".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_embed_src() {
+        let dom = Dom::parse(
+            r#"<html><body><embed src="http://embed.example.com/plugin.swf"></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://embed.example.com/plugin.swf".to_owned()));
+    }
+
+    #[test]
+    fn resource_urls_includes_object_data() {
+        let dom = Dom::parse(
+            r#"<html><body><object data="http://object.example.com/file.pdf"></object></body></html>"#,
+        );
+        assert!(dom
+            .resource_urls()
+            .contains(&"http://object.example.com/file.pdf".to_owned()));
     }
 }
