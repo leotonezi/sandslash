@@ -43,10 +43,8 @@ fn parse_robots(body: &str) -> ParsedRobots {
                     star_disallow_all = true;
                 }
             }
-            "sitemap" => {
-                if !value.is_empty() {
-                    has_sitemap = true;
-                }
+            "sitemap" if !value.is_empty() => {
+                has_sitemap = true;
             }
             _ => {}
         }
