@@ -8,6 +8,7 @@ use crate::fetcher::Fetcher;
 use crate::model::{AuditReport, Category, Finding, Headers, PageData, Severity};
 use crate::parser::Dom;
 use crate::report::json::write_json;
+use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
 
 pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
@@ -103,13 +104,40 @@ fn handle_redirect_loop(
 }
 
 fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()> {
+    use std::io::IsTerminal;
+
+    if config.quiet && config.output_json.is_none() {
+        // --quiet and no --output: write score only to stdout, suppress JSON
+        let terminal_opts = TerminalOpts {
+            quiet: true,
+            no_color: config.no_color,
+            is_tty: std::io::stdout().is_terminal(),
+        };
+        write_terminal(report, &terminal_opts, &mut std::io::stdout())?;
+        return Ok(());
+    }
+
     match &config.output_json {
         Some(path) => {
+            // --output: JSON to file, terminal report to stdout
             let file = std::fs::File::create(path)?;
             write_json(report, file)?;
+            let terminal_opts = TerminalOpts {
+                quiet: config.quiet,
+                no_color: config.no_color,
+                is_tty: std::io::stdout().is_terminal(),
+            };
+            write_terminal(report, &terminal_opts, &mut std::io::stdout())?;
         }
         None => {
+            // no --output: JSON to stdout, terminal report to stderr
             write_json(report, std::io::stdout())?;
+            let terminal_opts = TerminalOpts {
+                quiet: config.quiet,
+                no_color: config.no_color,
+                is_tty: std::io::stderr().is_terminal(),
+            };
+            write_terminal(report, &terminal_opts, &mut std::io::stderr())?;
         }
     }
     Ok(())

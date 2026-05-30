@@ -366,7 +366,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 
 ---
 
-## Phase 2 — Full single-page auditor + colored terminal report (target: 3–4 days)
+## ✓ Phase 2 — Full single-page auditor + colored terminal report (DONE)
 
 Goal: all single-page auditors, polished scoring, colored terminal output, robots/sitemap for root URL.
 
@@ -444,7 +444,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - Pipeline: run page audits first, then site audits sequentially (Phase 3 parallelizes).
 - Verify: integration test with wiremock site (HTML + robots.txt + sitemap.xml) → fully populated `AuditReport`.
 
-### 2.9 Terminal reporter (`src/report/terminal.rs`)
+### ✓ 2.9 Terminal reporter (`src/report/terminal.rs`)
 - Components:
   - Header: site URL + score in colored text.
   - Per-category bar: `Metadata  ██████████ 92`.
