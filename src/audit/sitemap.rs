@@ -17,17 +17,17 @@ fn resolve_sitemap_url(robots_body: &str, root: &Url) -> Option<Url> {
             Some(s) => s.trim(),
             None => continue,
         };
-        if let Some((directive, value)) = line.split_once(':') {
-            if directive.trim().eq_ignore_ascii_case("sitemap") {
-                let url_str = value.trim();
-                if !url_str.is_empty() {
-                    // Try absolute URL first, then resolve against root.
-                    if let Ok(u) = url_str.parse::<Url>() {
-                        return Some(u);
-                    }
-                    if let Ok(u) = root.join(url_str) {
-                        return Some(u);
-                    }
+        if let Some((directive, value)) = line.split_once(':')
+            && directive.trim().eq_ignore_ascii_case("sitemap")
+        {
+            let url_str = value.trim();
+            if !url_str.is_empty() {
+                // Try absolute URL first, then resolve against root.
+                if let Ok(u) = url_str.parse::<Url>() {
+                    return Some(u);
+                }
+                if let Ok(u) = root.join(url_str) {
+                    return Some(u);
                 }
             }
         }
@@ -95,12 +95,11 @@ impl SiteAuditor for SitemapAuditor {
                 Err(_) => break 'resolve fallback_sitemap_url(&page.url),
             };
 
-            if let Ok(robots_page) = ctx.fetcher.fetch(&robots_url).await {
-                if (200..300).contains(&robots_page.status) {
-                    if let Some(u) = resolve_sitemap_url(&robots_page.html, &page.url) {
-                        break 'resolve u;
-                    }
-                }
+            if let Ok(robots_page) = ctx.fetcher.fetch(&robots_url).await
+                && (200..300).contains(&robots_page.status)
+                && let Some(u) = resolve_sitemap_url(&robots_page.html, &page.url)
+            {
+                break 'resolve u;
             }
 
             fallback_sitemap_url(&page.url)
