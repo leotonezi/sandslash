@@ -1,8 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::config::CrawlConfig;
-use crate::error::{Result, SeoError};
+use sandslash::config::CrawlConfig;
+use sandslash::error::{Result, SeoError};
 
 #[derive(Parser, Debug)]
 #[command(name = "sandslash", version, about = "SEO audit CLI")]

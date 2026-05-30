@@ -1,16 +1,8 @@
-mod audit;
 mod cli;
-mod config;
-mod error;
-mod fetcher;
-mod model;
-mod parser;
-mod pipeline;
-mod report;
-mod score;
 
 use anyhow::Context;
 use clap::Parser;
+use sandslash::pipeline;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {

@@ -439,7 +439,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - Use `quick-xml` for parsing. Phase 2: check presence + well-formedness only (URL validation in Phase 4).
 - Verify: wiremock valid + malformed sitemap.xml.
 
-### 2.8 Wire all auditors into pipeline
+### ✓ 2.8 Wire all auditors into pipeline
 - Update `audit/mod.rs::page_auditors()`, add `site_auditors()`.
 - Pipeline: run page audits first, then site audits sequentially (Phase 3 parallelizes).
 - Verify: integration test with wiremock site (HTML + robots.txt + sitemap.xml) → fully populated `AuditReport`.

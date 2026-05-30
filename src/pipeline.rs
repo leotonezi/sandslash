@@ -22,7 +22,7 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         Err(e) => return Err(e.into()),
     };
 
-    let findings = {
+    let mut findings: Vec<Finding> = {
         let html = page_data.html.clone();
         let page_snap = page_data.clone();
         tokio::task::spawn_blocking(move || {
@@ -35,19 +35,16 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         .await?
     };
 
-    let page_report = score_page(page_data.url.clone(), findings);
-
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,
     };
-    let mut all_findings = page_report.findings.clone();
     for auditor in crate::audit::site_auditors() {
         let mut f = auditor.audit(&page_data, &ctx).await;
-        all_findings.append(&mut f);
+        findings.append(&mut f);
     }
 
-    let page_report = score_page(page_data.url, all_findings);
+    let page_report = score_page(page_data.url, findings);
     let site_score = score_site(std::slice::from_ref(&page_report));
 
     let report = AuditReport {
