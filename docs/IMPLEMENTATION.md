@@ -433,7 +433,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - **[RUST]** `async_trait` usage, `&dyn SiteAuditor` — async trait boxing cost is acceptable here.
 - Verify: wiremock-served robots.txt for all three branches.
 
-### 2.7 Sitemap auditor (`src/audit/sitemap.rs`) — root only
+### ✓ 2.7 Sitemap auditor (`src/audit/sitemap.rs`) — root only
 - Fetch from robots.txt `Sitemap:` line OR fallback to `/sitemap.xml`.
 - Findings: absent = Warning; malformed XML = Critical.
 - Use `quick-xml` for parsing. Phase 2: check presence + well-formedness only (URL validation in Phase 4).
