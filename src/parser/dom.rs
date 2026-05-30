@@ -234,9 +234,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><iframe src="http://iframe.example.com/frame"></iframe></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://iframe.example.com/frame".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://iframe.example.com/frame".to_owned())
+        );
     }
 
     #[test]
@@ -244,9 +245,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><audio src="http://audio.example.com/track.mp3"></audio></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://audio.example.com/track.mp3".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://audio.example.com/track.mp3".to_owned())
+        );
     }
 
     #[test]
@@ -254,9 +256,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><video src="http://video.example.com/clip.mp4"></video></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://video.example.com/clip.mp4".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://video.example.com/clip.mp4".to_owned())
+        );
     }
 
     #[test]
@@ -264,9 +267,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><video><source src="http://source.example.com/clip.mp4"></video></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://source.example.com/clip.mp4".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://source.example.com/clip.mp4".to_owned())
+        );
     }
 
     #[test]
@@ -274,9 +278,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><video><track src="http://track.example.com/subs.vtt"></video></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://track.example.com/subs.vtt".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://track.example.com/subs.vtt".to_owned())
+        );
     }
 
     #[test]
@@ -284,9 +289,10 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><embed src="http://embed.example.com/plugin.swf"></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://embed.example.com/plugin.swf".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://embed.example.com/plugin.swf".to_owned())
+        );
     }
 
     #[test]
@@ -294,8 +300,9 @@ mod tests {
         let dom = Dom::parse(
             r#"<html><body><object data="http://object.example.com/file.pdf"></object></body></html>"#,
         );
-        assert!(dom
-            .resource_urls()
-            .contains(&"http://object.example.com/file.pdf".to_owned()));
+        assert!(
+            dom.resource_urls()
+                .contains(&"http://object.example.com/file.pdf".to_owned())
+        );
     }
 }

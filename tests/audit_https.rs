@@ -1,5 +1,5 @@
-use sandslash::audit::https::HttpsAuditor;
 use sandslash::audit::PageAuditor;
+use sandslash::audit::https::HttpsAuditor;
 use sandslash::model::{Category, Headers, PageData, Severity};
 use sandslash::parser::Dom;
 
