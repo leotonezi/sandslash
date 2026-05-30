@@ -1,18 +1,29 @@
 use chrono::Utc;
+use url::Url;
 
 use crate::audit::AuditContext;
 use crate::config::CrawlConfig;
+use crate::error::SeoError;
 use crate::fetcher::Fetcher;
-use crate::model::AuditReport;
+use crate::model::{AuditReport, Category, Finding, Headers, PageData, Severity};
 use crate::parser::Dom;
 use crate::report::json::write_json;
+use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
 
 pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     let fetcher = Fetcher::new(&config)?;
-    let page_data = fetcher.fetch(&config.root).await?;
 
-    let findings = {
+    // Attempt to fetch the root page; catch redirect loops before anything else.
+    let page_data = match fetcher.fetch(&config.root).await {
+        Ok(pd) => pd,
+        Err(SeoError::RedirectLoop { url, hops }) => {
+            return handle_redirect_loop(url, hops, &config);
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    let mut findings: Vec<Finding> = {
         let html = page_data.html.clone();
         let page_snap = page_data.clone();
         tokio::task::spawn_blocking(move || {
@@ -25,19 +36,16 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         .await?
     };
 
-    let page_report = score_page(page_data.url.clone(), findings);
-
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,
     };
-    let mut all_findings = page_report.findings.clone();
     for auditor in crate::audit::site_auditors() {
         let mut f = auditor.audit(&page_data, &ctx).await;
-        all_findings.append(&mut f);
+        findings.append(&mut f);
     }
 
-    let page_report = score_page(page_data.url, all_findings);
+    let page_report = score_page(page_data.url, findings);
     let site_score = score_site(std::slice::from_ref(&page_report));
 
     let report = AuditReport {
@@ -47,15 +55,90 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         crawled_at: Utc::now().to_rfc3339(),
     };
 
-    match &config.output_json {
-        Some(path) => {
-            let file = std::fs::File::create(path)?;
-            write_json(&report, file)?;
-        }
-        None => {
-            write_json(&report, std::io::stdout())?;
-        }
+    emit_report(&report, &config)?;
+    Ok(report)
+}
+
+/// Build a synthetic report for a redirect-loop URL: status=0, single `redirects.loop` Critical
+/// finding, page auditors are skipped entirely.
+fn handle_redirect_loop(
+    url: String,
+    hops: usize,
+    config: &CrawlConfig,
+) -> anyhow::Result<AuditReport> {
+    let parsed_url: Url = Url::parse(&url).map_err(SeoError::from)?;
+
+    // Populate redirect_chain with `hops` copies of the loop URL so that length == hops.
+    let redirect_chain = vec![parsed_url.clone(); hops];
+
+    let synthetic = PageData {
+        url: parsed_url.clone(),
+        status: 0,
+        redirect_chain,
+        html: String::new(),
+        headers: Headers::default(),
+        depth: 0,
+    };
+
+    let loop_finding = Finding {
+        check_id: "redirects.loop",
+        category: Category::Links,
+        severity: Severity::Critical,
+        message: format!("Redirect loop detected at {url} after {hops} hops"),
+        penalty: 40,
+    };
+
+    // Skip page_auditors() — emit only the loop finding.
+    let page_report = score_page(synthetic.url, vec![loop_finding]);
+    let site_score = score_site(std::slice::from_ref(&page_report));
+
+    let report = AuditReport {
+        root: config.root.clone(),
+        pages: vec![page_report],
+        site_score,
+        crawled_at: Utc::now().to_rfc3339(),
+    };
+
+    emit_report(&report, config)?;
+    Ok(report)
+}
+
+fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()> {
+    use std::io::IsTerminal;
+
+    if config.quiet && config.output_json.is_none() {
+        // --quiet and no --output: write score only to stdout, suppress JSON
+        let terminal_opts = TerminalOpts {
+            quiet: true,
+            no_color: config.no_color,
+            is_tty: std::io::stdout().is_terminal(),
+        };
+        write_terminal(report, &terminal_opts, &mut std::io::stdout())?;
+        return Ok(());
     }
 
-    Ok(report)
+    match &config.output_json {
+        Some(path) => {
+            // --output: JSON to file, terminal report to stdout
+            let file = std::fs::File::create(path)?;
+            write_json(report, file)?;
+            let terminal_opts = TerminalOpts {
+                quiet: config.quiet,
+                no_color: config.no_color,
+                is_tty: std::io::stdout().is_terminal(),
+            };
+            write_terminal(report, &terminal_opts, &mut std::io::stdout())?;
+        }
+        None => {
+            // no --output: JSON to stdout, terminal report to stderr
+            write_json(report, std::io::stdout())?;
+            let terminal_opts = TerminalOpts {
+                quiet: config.quiet,
+                no_color: config.no_color,
+                is_tty: std::io::stderr().is_terminal(),
+            };
+            write_terminal(report, &terminal_opts, &mut std::io::stderr())?;
+        }
+    }
+    Ok(())
 }

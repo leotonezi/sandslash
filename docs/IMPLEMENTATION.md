@@ -366,7 +366,7 @@ Goal: `seo-rs https://example.com` fetches, parses, runs metadata/headings/https
 
 ---
 
-## Phase 2 — Full single-page auditor + colored terminal report (target: 3–4 days)
+## ✓ Phase 2 — Full single-page auditor + colored terminal report (DONE)
 
 Goal: all single-page auditors, polished scoring, colored terminal output, robots/sitemap for root URL.
 
@@ -417,34 +417,34 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 - **[GOTCHA]** Non-ASCII bytes in `Location` → `to_str()` fails. Decide: fail or skip.
 - Verify: wiremock 3-hop chain test; self-redirect loop test.
 
-### 2.4 Redirects auditor (`src/audit/redirects.rs`)
+### ✓ 2.4 Redirects auditor (`src/audit/redirects.rs`)
 - chain length > 3 = Warning; > 5 = Critical.
 - `SeoError::RedirectLoop` caught at pipeline level → synthetic `PageData` + Critical finding.
 - Verify: unit test on synthetic `PageData { redirect_chain: vec![...] }`.
 
-### 2.5 Mixed content extension (`src/audit/https.rs`)
+### ✓ 2.5 Mixed content extension (`src/audit/https.rs`)
 - Flag any `http://` resource referenced from an `https://` page.
 - Extend existing `HttpsAuditor`.
 - Verify: fixture test with mixed-content srcs.
 
-### 2.6 Robots auditor (`src/audit/robots.rs`) — first SiteAuditor
+### ✓ 2.6 Robots auditor (`src/audit/robots.rs`) — first SiteAuditor
 - Fetch `{root.origin()}/robots.txt`. Findings: 404 = Warning; `Disallow: /` for `*` = Critical; no `Sitemap:` = Info.
 - Parse manually — look for `User-agent: *` block, `Disallow: /`, any `Sitemap:` lines.
 - **[RUST]** `async_trait` usage, `&dyn SiteAuditor` — async trait boxing cost is acceptable here.
 - Verify: wiremock-served robots.txt for all three branches.
 
-### 2.7 Sitemap auditor (`src/audit/sitemap.rs`) — root only
+### ✓ 2.7 Sitemap auditor (`src/audit/sitemap.rs`) — root only
 - Fetch from robots.txt `Sitemap:` line OR fallback to `/sitemap.xml`.
 - Findings: absent = Warning; malformed XML = Critical.
 - Use `quick-xml` for parsing. Phase 2: check presence + well-formedness only (URL validation in Phase 4).
 - Verify: wiremock valid + malformed sitemap.xml.
 
-### 2.8 Wire all auditors into pipeline
+### ✓ 2.8 Wire all auditors into pipeline
 - Update `audit/mod.rs::page_auditors()`, add `site_auditors()`.
 - Pipeline: run page audits first, then site audits sequentially (Phase 3 parallelizes).
 - Verify: integration test with wiremock site (HTML + robots.txt + sitemap.xml) → fully populated `AuditReport`.
 
-### 2.9 Terminal reporter (`src/report/terminal.rs`)
+### ✓ 2.9 Terminal reporter (`src/report/terminal.rs`)
 - Components:
   - Header: site URL + score in colored text.
   - Per-category bar: `Metadata  ██████████ 92`.

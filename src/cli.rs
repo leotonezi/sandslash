@@ -1,8 +1,8 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::config::CrawlConfig;
-use crate::error::{Result, SeoError};
+use sandslash::config::CrawlConfig;
+use sandslash::error::{Result, SeoError};
 
 #[derive(Parser, Debug)]
 #[command(name = "sandslash", version, about = "SEO audit CLI")]
@@ -42,15 +42,15 @@ pub struct Cli {
     #[arg(long, default_value_t = false)]
     pub ignore_robots: bool,
 
-    /// Print only the final score (machine-readable).
+    /// Print only the final site score; JSON output is suppressed unless --output is set.
     #[arg(short, long)]
     pub quiet: bool,
 
-    /// Disable colored output.
+    /// Disable ANSI color codes in the terminal report (also honors NO_COLOR env var).
     #[arg(long)]
     pub no_color: bool,
 
-    /// Write JSON report to file (stdout if omitted).
+    /// Write JSON report to PATH. When set, the terminal report goes to stdout; otherwise JSON goes to stdout and the terminal report goes to stderr.
     #[arg(short = 'o', long)]
     pub output: Option<PathBuf>,
 }
