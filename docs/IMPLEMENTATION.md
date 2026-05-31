@@ -476,7 +476,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** Don't `.to_lowercase()` on raw URL text — `url` handles IDN internally.
 - Verify: ≥20 unit test cases covering fragment, utm, relative, schemeless `//foo`, mailto rejection, query sorting, idempotence.
 
-### 3.2 Link discovery
+### ✓ 3.2 Link discovery
 - `pub fn discover_links(base: &Url, dom: &Dom) -> Vec<Url>` — `dom.links()` + `normalize()`, deduped, same-host only.
 - `pub fn is_same_site(a: &Url, b: &Url) -> bool` — compare exact hosts (document `www.foo.com` ≠ `foo.com` limitation).
 - Verify: unit tests.
