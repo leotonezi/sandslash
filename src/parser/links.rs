@@ -103,10 +103,11 @@ pub fn discover_links(base: &Url, dom: &Dom) -> Vec<Url> {
     let mut result: Vec<Url> = Vec::new();
 
     for href in dom.links() {
-        if let Some(url) = normalize(base, &href) {
-            if is_same_site(base, &url) && seen.insert(url.clone()) {
-                result.push(url);
-            }
+        if let Some(url) = normalize(base, &href)
+            && is_same_site(base, &url)
+            && seen.insert(url.clone())
+        {
+            result.push(url);
         }
     }
 
