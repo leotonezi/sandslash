@@ -45,7 +45,7 @@ export async function POST(request: Request): Promise<Response> {
   const tempPath = path.join(os.tmpdir(), `${randomUUID()}.json`);
   const binPath =
     process.env.SEO_RS_BIN ??
-    path.resolve(process.cwd(), "../target/release/seo-rs");
+    path.resolve(process.cwd(), "../target/release/sandslash");
 
   try {
     const result = await new Promise<{ exitCode: number; stderr: string }>(
