@@ -1,4 +1,8 @@
+use std::collections::HashSet;
+
 use url::Url;
+
+use crate::parser::dom::Dom;
 
 /// Query-string keys that must be stripped unconditionally (exact, case-sensitive match).
 const EXACT_STRIP: &[&str] = &["fbclid", "gclid", "mc_eid", "ref", "igshid"];
@@ -76,9 +80,43 @@ pub fn normalize(base: &Url, href: &str) -> Option<Url> {
     Some(u)
 }
 
+/// Returns `true` only when both URLs share an exact host string.
+///
+/// # Limitation
+/// Compares `host_str()` exactly: `www.foo.com` and `foo.com` are considered
+/// different sites. eTLD+1 / public-suffix-aware comparison is out of scope.
+/// Returns `false` if either URL has no host (e.g. `file://`, `data:`).
+pub fn is_same_site(a: &Url, b: &Url) -> bool {
+    match (a.host_str(), b.host_str()) {
+        (Some(ah), Some(bh)) => ah == bh,
+        _ => false,
+    }
+}
+
+/// Walk `dom.links()`, normalize each href against `base`, filter to same-host
+/// URLs, and return a deduplicated list preserving insertion order of first
+/// occurrences.
+///
+/// Self-links (URLs equal to `base` after normalization) are kept.
+pub fn discover_links(base: &Url, dom: &Dom) -> Vec<Url> {
+    let mut seen: HashSet<Url> = HashSet::new();
+    let mut result: Vec<Url> = Vec::new();
+
+    for href in dom.links() {
+        if let Some(url) = normalize(base, &href) {
+            if is_same_site(base, &url) && seen.insert(url.clone()) {
+                result.push(url);
+            }
+        }
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::parser::dom::Dom;
 
     fn base() -> Url {
         Url::parse("https://example.com/").expect("invariant: valid base URL")
@@ -126,7 +164,6 @@ mod tests {
 
     #[test]
     fn returns_none_for_unsupported_scheme_ftp() {
-        // ftp: is not http/https — normalize must return None
         assert!(normalize(&base(), "ftp://files.example.com/file.zip").is_none());
     }
 
@@ -193,7 +230,6 @@ mod tests {
     #[test]
     fn preserves_non_tracking_params() {
         let result = normalize(&base(), "/search?q=rust&page=2").expect("should normalize");
-        // Params should be kept and sorted (page < q alphabetically)
         assert_eq!(result.as_str(), "https://example.com/search?page=2&q=rust");
     }
 
@@ -272,5 +308,137 @@ mod tests {
         let result =
             normalize(&base(), "https://other.com/path?b=2&a=1").expect("should normalize");
         assert_eq!(result.as_str(), "https://other.com/path?a=1&b=2");
+    }
+
+    // ── is_same_site ─────────────────────────────────────────────────────
+
+    fn url(s: &str) -> Url {
+        Url::parse(s).expect("invariant: test URL must be valid")
+    }
+
+    #[test]
+    fn is_same_site_identical_host_true() {
+        assert!(is_same_site(
+            &url("https://example.com/page"),
+            &url("https://example.com/other")
+        ));
+    }
+
+    #[test]
+    fn is_same_site_www_vs_apex_false() {
+        assert!(!is_same_site(
+            &url("https://www.foo.com/"),
+            &url("https://foo.com/")
+        ));
+    }
+
+    #[test]
+    fn is_same_site_different_hosts_false() {
+        assert!(!is_same_site(
+            &url("https://example.com/"),
+            &url("https://other.com/")
+        ));
+    }
+
+    #[test]
+    fn is_same_site_http_vs_https_same_host_true() {
+        assert!(is_same_site(
+            &url("http://example.com/page"),
+            &url("https://example.com/page")
+        ));
+    }
+
+    #[test]
+    fn is_same_site_no_host_false() {
+        let file_url =
+            Url::parse("file:///tmp/index.html").expect("invariant: file URL must parse");
+        assert!(!is_same_site(&file_url, &url("https://example.com/")));
+        assert!(!is_same_site(&url("https://example.com/"), &file_url));
+    }
+
+    // ── discover_links ────────────────────────────────────────────────────
+
+    fn dom_for(html: &str) -> Dom {
+        Dom::parse(html)
+    }
+
+    fn page_with_links(links_html: &str) -> String {
+        format!(
+            r#"<!DOCTYPE html><html><head><title>T</title></head><body>{links_html}</body></html>"#
+        )
+    }
+
+    #[test]
+    fn discover_keeps_same_host_drops_external_and_invalid_schemes() {
+        // #anchor resolves to the base URL (fragment stripped) → same-host, kept.
+        // External host, mailto:, javascript: → all dropped.
+        let html = page_with_links(concat!(
+            r#"<a href="/about">About</a>"#,
+            r#"<a href="https://external.com/page">Ext</a>"#,
+            r#"<a href="mailto:user@example.com">Mail</a>"#,
+            r#"<a href="javascript:void(0)">JS</a>"#,
+            "<a href=\"#anchor\">Anchor</a>",
+        ));
+        let b = base();
+        let dom = dom_for(&html);
+        let links = discover_links(&b, &dom);
+
+        assert!(
+            links.iter().any(|u| u.path() == "/about"),
+            "expected /about in {links:?}"
+        );
+        assert!(
+            links.iter().all(|u| u.host_str() == Some("example.com")),
+            "external host leaked into {links:?}"
+        );
+        // /about + base URL (from #anchor resolution) = 2 same-host links
+        assert_eq!(links.len(), 2, "unexpected link count: {links:?}");
+    }
+
+    #[test]
+    fn discover_deduplicates_links() {
+        let html = page_with_links(concat!(
+            r#"<a href="/a">First</a>"#,
+            r#"<a href="/a">Duplicate</a>"#,
+            r#"<a href="/a?utm_source=x">UTM</a>"#,
+        ));
+        // normalize() strips utm_ params, so /a?utm_source=x → /a.
+        // All three hrefs collapse to the same canonical URL → single result.
+        let b = base();
+        let dom = dom_for(&html);
+        let links = discover_links(&b, &dom);
+
+        assert_eq!(
+            links.len(),
+            1,
+            "expected 1 deduplicated link, got {links:?}"
+        );
+        assert_eq!(links[0].path(), "/a");
+    }
+
+    #[test]
+    fn discover_resolves_relative_href() {
+        let html = page_with_links(r#"<a href="about">About relative</a>"#);
+        let b = Url::parse("https://example.com/dir/").expect("invariant: valid base URL");
+        let dom = dom_for(&html);
+        let links = discover_links(&b, &dom);
+
+        assert_eq!(links.len(), 1, "expected 1 link, got {links:?}");
+        assert_eq!(
+            links[0].as_str(),
+            "https://example.com/dir/about",
+            "relative href not resolved correctly"
+        );
+    }
+
+    #[test]
+    fn discover_keeps_self_link() {
+        let html = page_with_links(r#"<a href="https://example.com/">Home</a>"#);
+        let b = base();
+        let dom = dom_for(&html);
+        let links = discover_links(&b, &dom);
+
+        assert_eq!(links.len(), 1, "self-link should be kept: {links:?}");
+        assert_eq!(links[0].host_str(), Some("example.com"));
     }
 }
