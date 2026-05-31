@@ -463,7 +463,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 
 Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into one report.
 
-### 3.1 URL normalization (`src/parser/links.rs`)
+### ✓ 3.1 URL normalization (`src/parser/links.rs`)
 - `pub fn normalize(base: &Url, href: &str) -> Option<Url>`:
   1. `base.join(href).ok()?`
   2. Lowercase scheme + host.
