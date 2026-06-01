@@ -4,17 +4,27 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.4.0] - 2026-06-01
+
+### Features
+
+- Implement per-host rate limiter with governor + dashmap (closes #40) ([48366e4](https://github.com/leotonezi/sandslash/commit/48366e4c3bcf0b45c1e838ad7fe8cf88c8309e35))
+
 ## [0.3.0] - 2026-05-30
 
 ### Bug Fixes
 
 - Collapse sitemap match arm to satisfy clippy::collapsible-match ([39ed19a](https://github.com/leotonezi/sandslash/commit/39ed19a7ccfc271d7709998c5fa6d9eddff893b9))
 - Collapse nested if blocks in sitemap.rs to satisfy clippy::collapsible-if ([3e9730e](https://github.com/leotonezi/sandslash/commit/3e9730e4bf8bcdb7218d577b63fbd27a170379b6))
+- Update frontend binary path from seo-rs to sandslash ([f3d7ab5](https://github.com/leotonezi/sandslash/commit/f3d7ab58b5a41e9a043c0eb1188a0fb9f7bb5b53))
+- Collapse nested if in discover_links to satisfy clippy::collapsible-if ([29ea3c9](https://github.com/leotonezi/sandslash/commit/29ea3c9234dbdb86ffc277e3b0950a2bb6afbae2))
 - Remove redundant pre-release-replacements conflicting with git-cliff hook ([cc85656](https://github.com/leotonezi/sandslash/commit/cc8565634d00aaa6e6f7fa4d467912ca637af905))
 
 ### Chores
 
 - Release sandslash version 0.2.0 ([1ac3a1b](https://github.com/leotonezi/sandslash/commit/1ac3a1be551942247337c1c672bf1d760758d688))
+- Trigger merge check refresh ([97f64ee](https://github.com/leotonezi/sandslash/commit/97f64eeb8d434ae4f616408b59188e325d73af3d))
+- Release sandslash version 0.3.0 ([bb87d34](https://github.com/leotonezi/sandslash/commit/bb87d34838f909522f0a1b143ff56dfcb7e3d622))
 
 ### Features
 
@@ -24,6 +34,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Implement SitemapAuditor as second SiteAuditor (closes #25) ([4e0ec76](https://github.com/leotonezi/sandslash/commit/4e0ec76847e2cde45b898efdfde6793965ab2832))
 - Wire all auditors into pipeline and expose lib crate (closes #27) ([fbf3fa6](https://github.com/leotonezi/sandslash/commit/fbf3fa6ecda535ec4220028de74a49053db652cb))
 - Implement terminal reporter and wire emit_report routing (closes #29) ([bf53ef8](https://github.com/leotonezi/sandslash/commit/bf53ef8050b1b3d554e2984e937c6fc97c7f63af))
+- Implement URL normalization in parser/links.rs (closes #33) ([d7c4403](https://github.com/leotonezi/sandslash/commit/d7c44036391c27da19e8e5c8ed7f750e413df2d0))
+- Implement link discovery and URL normalization in parser/links.rs (closes #35) ([5725869](https://github.com/leotonezi/sandslash/commit/5725869654ddd2c5d54151d5e6ca2b158a1a451a))
+- Implement Redis-backed crawl frontier (closes #38) ([17ed68c](https://github.com/leotonezi/sandslash/commit/17ed68cfbb773004f2d6b86951cbc98071e55c1b))
 
 ### Style
 
@@ -65,5 +78,6 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.4.0]: https://github.com/leotonezi/sandslash/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/leotonezi/sandslash/compare/v0.2.0...v0.3.0
 
