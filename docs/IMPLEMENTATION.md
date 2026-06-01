@@ -481,7 +481,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - `pub fn is_same_site(a: &Url, b: &Url) -> bool` — compare exact hosts (document `www.foo.com` ≠ `foo.com` limitation).
 - Verify: unit tests.
 
-### 3.3 Redis frontier (`src/crawler/frontier.rs`)
+### ✓ 3.3 Redis frontier (`src/crawler/frontier.rs`)
 - Build:
   ```rust
   pub struct Frontier {
