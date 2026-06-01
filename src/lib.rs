@@ -2,6 +2,7 @@
 // The binary entry point remains main.rs.
 pub mod audit;
 pub mod config;
+pub mod crawler;
 pub mod error;
 pub mod fetcher;
 pub mod model;
