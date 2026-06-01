@@ -511,7 +511,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** Termination race: empty queue ≠ done. A worker may be mid-fetch about to enqueue children. Only exit when queue empty AND inflight == 0.
 - Verify: integration test against local Redis (skip with `#[ignore]` if env var absent). Cover dedup, FIFO order, inflight counter, completion check.
 
-### 3.4 Per-host rate limiter (`src/fetcher/rate_limiter.rs`)
+### ✓ 3.4 Per-host rate limiter (`src/fetcher/rate_limiter.rs`)
 - Use `governor` + `dashmap`:
   ```rust
   pub struct HostRateLimiter {
