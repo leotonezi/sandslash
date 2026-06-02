@@ -1,56 +1,110 @@
+use std::num::NonZeroU32;
+use std::sync::Arc;
+
 use chrono::Utc;
 use url::Url;
 
 use crate::audit::AuditContext;
 use crate::config::CrawlConfig;
+use crate::crawler::RobotsCache;
 use crate::error::SeoError;
-use crate::fetcher::Fetcher;
-use crate::model::{AuditReport, Category, Finding, Headers, PageData, Severity};
+use crate::fetcher::{Fetcher, HostRateLimiter};
+use crate::model::{AuditReport, Category, Finding, Headers, PageData, PageReport, Severity};
 use crate::parser::Dom;
 use crate::report::json::write_json;
 use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
 
 pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
-    let fetcher = Fetcher::new(&config)?;
+    let qps = NonZeroU32::new(config.rate_per_host)
+        .unwrap_or_else(|| NonZeroU32::new(1).expect("invariant: 1 != 0"));
+    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
+    let fetcher = Arc::new(Fetcher::new(&config, Arc::clone(&rate_limiter))?);
+    let robots_cache = Arc::new(RobotsCache::new());
 
-    // Attempt to fetch the root page; catch redirect loops before anything else.
-    let page_data = match fetcher.fetch(&config.root).await {
-        Ok(pd) => pd,
-        Err(SeoError::RedirectLoop { url, hops }) => {
-            return handle_redirect_loop(url, hops, &config);
+    let page_reports: Vec<PageReport> = if config.depth == 0 {
+        // ── Single-page path (no Redis dependency) ────────────────────────
+
+        // Robots gating for single-page path.
+        if config.respect_robots {
+            let allowed = robots_cache
+                .allowed(&config.root, &fetcher, &config.user_agent, &rate_limiter)
+                .await;
+            if !allowed {
+                tracing::debug!(url = %config.root, "robots.txt disallowed root URL; returning empty report");
+                let report = AuditReport {
+                    root: config.root.clone(),
+                    pages: vec![],
+                    site_score: 100,
+                    crawled_at: Utc::now().to_rfc3339(),
+                };
+                emit_report(&report, &config)?;
+                return Ok(report);
+            }
         }
-        Err(e) => return Err(e.into()),
-    };
 
-    let mut findings: Vec<Finding> = {
-        let html = page_data.html.clone();
-        let page_snap = page_data.clone();
-        tokio::task::spawn_blocking(move || {
-            let dom = Dom::parse(&html);
-            crate::audit::page_auditors()
-                .iter()
-                .flat_map(|a| a.audit(&page_snap, &dom))
-                .collect::<Vec<_>>()
-        })
+        let page_data = match fetcher.fetch(&config.root).await {
+            Ok(pd) => pd,
+            Err(SeoError::RedirectLoop { url, hops }) => {
+                return handle_redirect_loop(url, hops, &config);
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        let mut findings: Vec<Finding> = {
+            let html = page_data.html.clone();
+            let page_snap = page_data.clone();
+            tokio::task::spawn_blocking(move || {
+                let dom = Dom::parse(&html);
+                crate::audit::page_auditors()
+                    .iter()
+                    .flat_map(|a| a.audit(&page_snap, &dom))
+                    .collect::<Vec<_>>()
+            })
+            .await?
+        };
+
+        let ctx = AuditContext {
+            config: &config,
+            fetcher: &fetcher,
+        };
+        for auditor in crate::audit::site_auditors() {
+            let mut f = auditor.audit(&page_data, &ctx).await;
+            findings.append(&mut f);
+        }
+
+        let page_report = score_page(page_data.url, findings);
+        vec![page_report]
+    } else {
+        // ── Multi-page crawler path ───────────────────────────────────────
+        let redis_url = config
+            .redis_url
+            .as_deref()
+            .ok_or_else(|| SeoError::Config("--redis-url is required when depth > 0".into()))?;
+
+        let job_id = format!("seo-rs-{}", Utc::now().timestamp_millis());
+        let frontier = crate::crawler::Frontier::new(redis_url, job_id).await?;
+
+        let page_auditors = Arc::new(crate::audit::page_auditors());
+        let site_auditors = Arc::new(crate::audit::site_auditors());
+
+        crate::crawler::run_crawl(
+            Arc::new(config.clone()),
+            Arc::clone(&fetcher),
+            frontier,
+            page_auditors,
+            site_auditors,
+            Arc::clone(&rate_limiter),
+            Arc::clone(&robots_cache),
+        )
         .await?
     };
 
-    let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
-    };
-    for auditor in crate::audit::site_auditors() {
-        let mut f = auditor.audit(&page_data, &ctx).await;
-        findings.append(&mut f);
-    }
-
-    let page_report = score_page(page_data.url, findings);
-    let site_score = score_site(std::slice::from_ref(&page_report));
+    let site_score = score_site(&page_reports);
 
     let report = AuditReport {
         root: config.root.clone(),
-        pages: vec![page_report],
+        pages: page_reports,
         site_score,
         crawled_at: Utc::now().to_rfc3339(),
     };
@@ -59,8 +113,6 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     Ok(report)
 }
 
-/// Build a synthetic report for a redirect-loop URL: status=0, single `redirects.loop` Critical
-/// finding, page auditors are skipped entirely.
 fn handle_redirect_loop(
     url: String,
     hops: usize,
@@ -68,7 +120,6 @@ fn handle_redirect_loop(
 ) -> anyhow::Result<AuditReport> {
     let parsed_url: Url = Url::parse(&url).map_err(SeoError::from)?;
 
-    // Populate redirect_chain with `hops` copies of the loop URL so that length == hops.
     let redirect_chain = vec![parsed_url.clone(); hops];
 
     let synthetic = PageData {
@@ -88,7 +139,6 @@ fn handle_redirect_loop(
         penalty: 40,
     };
 
-    // Skip page_auditors() — emit only the loop finding.
     let page_report = score_page(synthetic.url, vec![loop_finding]);
     let site_score = score_site(std::slice::from_ref(&page_report));
 
@@ -107,7 +157,6 @@ fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()>
     use std::io::IsTerminal;
 
     if config.quiet && config.output_json.is_none() {
-        // --quiet and no --output: write score only to stdout, suppress JSON
         let terminal_opts = TerminalOpts {
             quiet: true,
             no_color: config.no_color,
@@ -119,7 +168,6 @@ fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()>
 
     match &config.output_json {
         Some(path) => {
-            // --output: JSON to file, terminal report to stdout
             let file = std::fs::File::create(path)?;
             write_json(report, file)?;
             let terminal_opts = TerminalOpts {
@@ -130,7 +178,6 @@ fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()>
             write_terminal(report, &terminal_opts, &mut std::io::stdout())?;
         }
         None => {
-            // no --output: JSON to stdout, terminal report to stderr
             write_json(report, std::io::stdout())?;
             let terminal_opts = TerminalOpts {
                 quiet: config.quiet,
@@ -141,4 +188,42 @@ fn emit_report(report: &AuditReport, config: &CrawlConfig) -> anyhow::Result<()>
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use url::Url;
+
+    fn make_depth_config(depth: u32, redis_url: Option<String>) -> CrawlConfig {
+        CrawlConfig {
+            root: Url::parse("http://example.com/").expect("invariant: valid URL"),
+            depth,
+            concurrency: 1,
+            rate_per_host: 10,
+            redis_url,
+            user_agent: "test-agent".to_owned(),
+            timeout_secs: 5,
+            max_pages: None,
+            respect_robots: false,
+            quiet: true,
+            no_color: true,
+            output_json: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn depth_nonzero_without_redis_url_returns_config_error() {
+        let config = make_depth_config(1, None);
+        let result = run(config).await;
+        let err = result.expect_err("expected an error when redis_url is None with depth > 0");
+
+        let seo_err = err
+            .downcast::<SeoError>()
+            .expect("error must downcast to SeoError");
+        assert!(
+            matches!(seo_err, SeoError::Config(_)),
+            "expected SeoError::Config, got {seo_err:?}"
+        );
+    }
 }
