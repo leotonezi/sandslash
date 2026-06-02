@@ -535,7 +535,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** Holding a DashMap entry guard across `.await` DEADLOCKS the map. Always `.clone()` the `Arc` out before awaiting. This is the #1 trap in this file.
 - Verify: integration test — 10 requests to one mock host with `qps=2`, assert wall time ≥ ~4s.
 
-### 3.5 Fetcher + rate limiter integration (REFACTOR `src/fetcher/`)
+### ✓ 3.5 Fetcher + rate limiter integration (REFACTOR `src/fetcher/`)
 - Inject `Arc<HostRateLimiter>` into `Fetcher`.
 - Call `rate_limiter.acquire(host).await` before each network call.
 - Add backoff on 429/503: respect `Retry-After`; otherwise exponential (1s, 2s, 4s, max 3 retries).

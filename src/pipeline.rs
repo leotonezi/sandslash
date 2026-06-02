@@ -1,10 +1,12 @@
 use chrono::Utc;
+use std::num::NonZeroU32;
+use std::sync::Arc;
 use url::Url;
 
 use crate::audit::AuditContext;
 use crate::config::CrawlConfig;
 use crate::error::SeoError;
-use crate::fetcher::Fetcher;
+use crate::fetcher::{Fetcher, HostRateLimiter};
 use crate::model::{AuditReport, Category, Finding, Headers, PageData, Severity};
 use crate::parser::Dom;
 use crate::report::json::write_json;
@@ -12,7 +14,10 @@ use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
 
 pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
-    let fetcher = Fetcher::new(&config)?;
+    let qps = NonZeroU32::new(config.rate_per_host)
+        .unwrap_or_else(|| NonZeroU32::new(1).expect("invariant: 1 != 0"));
+    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
+    let fetcher = Fetcher::new(&config, rate_limiter)?;
 
     // Attempt to fetch the root page; catch redirect loops before anything else.
     let page_data = match fetcher.fetch(&config.root).await {
