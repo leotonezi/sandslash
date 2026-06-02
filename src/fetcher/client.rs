@@ -82,18 +82,18 @@ impl Fetcher {
                 let status = status_code.as_u16();
 
                 // Handle redirects immediately — no retry logic for redirect responses.
-                if status_code.is_redirection() {
-                    if let Some(loc_header) = resp.headers().get(LOCATION) {
-                        let loc_str = loc_header
-                            .to_str()
-                            .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
-                        let next = current.join(loc_str).map_err(SeoError::from)?;
-                        chain.push(current.clone());
-                        current = next;
-                        drop(resp);
-                        // Break out of the retry loop with a sentinel that signals "follow redirect".
-                        break (0u16, Headers::default(), String::new());
-                    }
+                if status_code.is_redirection()
+                    && let Some(loc_header) = resp.headers().get(LOCATION)
+                {
+                    let loc_str = loc_header
+                        .to_str()
+                        .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
+                    let next = current.join(loc_str).map_err(SeoError::from)?;
+                    chain.push(current.clone());
+                    current = next;
+                    drop(resp);
+                    // Break out of the retry loop with a sentinel that signals "follow redirect".
+                    break (0u16, Headers::default(), String::new());
                 }
 
                 // Check whether we should retry (429 / 503).
