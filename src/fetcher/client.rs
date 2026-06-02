@@ -1,20 +1,25 @@
 use reqwest::header::{HeaderMap, LOCATION};
 use std::collections::HashSet;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::time::sleep;
 use url::Url;
 
 use crate::config::CrawlConfig;
 use crate::error::{Result, SeoError};
+use crate::fetcher::HostRateLimiter;
 use crate::model::{Headers, PageData};
 
 const MAX_REDIRECTS: usize = 10;
+const MAX_RETRIES: u32 = 3;
 
 pub struct Fetcher {
     client: reqwest::Client,
+    rate_limiter: Arc<HostRateLimiter>,
 }
 
 impl Fetcher {
-    pub fn new(config: &CrawlConfig) -> Result<Self> {
+    pub fn new(config: &CrawlConfig, rate_limiter: Arc<HostRateLimiter>) -> Result<Self> {
         let client = reqwest::Client::builder()
             .user_agent(&config.user_agent)
             .timeout(Duration::from_secs(config.timeout_secs))
@@ -24,7 +29,10 @@ impl Fetcher {
                 url: config.root.to_string(),
                 source: e,
             })?;
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            rate_limiter,
+        })
     }
 
     pub async fn fetch(&self, url: &Url) -> Result<PageData> {
@@ -49,56 +57,93 @@ impl Fetcher {
                 });
             }
 
-            let resp =
-                self.client
-                    .get(current.clone())
-                    .send()
-                    .await
-                    .map_err(|e| SeoError::Fetch {
-                        url: current.to_string(),
-                        source: e,
-                    })?;
+            // Compute host once per hop; the token is acquired inside the retry loop.
+            let host = current
+                .host_str()
+                .ok_or(SeoError::Url(url::ParseError::EmptyHost))?;
 
-            let status_code = resp.status();
-            let status = status_code.as_u16();
+            // Retry loop for 429 / 503 responses — scoped to a single hop.
+            let mut attempt = 0u32;
+            let (resp_status, resp_headers, resp_html) = loop {
+                // Acquire rate-limit token before EACH attempt (initial + retries).
+                self.rate_limiter.acquire(host).await;
 
-            if let (true, Some(loc_header)) =
-                (status_code.is_redirection(), resp.headers().get(LOCATION))
-            {
-                let loc_str = loc_header
-                    .to_str()
-                    .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
+                let resp =
+                    self.client
+                        .get(current.clone())
+                        .send()
+                        .await
+                        .map_err(|e| SeoError::Fetch {
+                            url: current.to_string(),
+                            source: e,
+                        })?;
 
-                let next = current.join(loc_str).map_err(SeoError::from)?;
+                let status_code = resp.status();
+                let status = status_code.as_u16();
 
-                chain.push(current.clone());
-                current = next;
-                drop(resp);
+                // Handle redirects immediately — no retry logic for redirect responses.
+                if status_code.is_redirection() {
+                    if let Some(loc_header) = resp.headers().get(LOCATION) {
+                        let loc_str = loc_header
+                            .to_str()
+                            .map_err(|_| SeoError::Parse("non-ASCII Location header".into()))?;
+                        let next = current.join(loc_str).map_err(SeoError::from)?;
+                        chain.push(current.clone());
+                        current = next;
+                        drop(resp);
+                        // Break out of the retry loop with a sentinel that signals "follow redirect".
+                        break (0u16, Headers::default(), String::new());
+                    }
+                }
+
+                // Check whether we should retry (429 / 503).
+                if (status == 429 || status == 503) && attempt < MAX_RETRIES {
+                    // Read Retry-After header BEFORE consuming body.
+                    let retry_after_secs = resp
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .unwrap_or_else(|| 1u64 << attempt); // exponential: 1, 2, 4
+
+                    drop(resp);
+                    sleep(Duration::from_secs(retry_after_secs)).await;
+                    attempt += 1;
+                    continue;
+                }
+
+                // Terminal response (non-redirect, non-retried, or retries exhausted).
+                let headers = extract_headers(resp.headers());
+
+                if !headers
+                    .get("content-type")
+                    .map(|ct| {
+                        ct.contains("utf-8") || ct.contains("UTF-8") || ct.contains("text/html")
+                    })
+                    .unwrap_or(true)
+                {
+                    tracing::warn!(url = %current, "non-UTF-8 content-type detected; decoding may be lossy");
+                }
+
+                let html = resp.text().await.map_err(|e| SeoError::Fetch {
+                    url: current.to_string(),
+                    source: e,
+                })?;
+
+                break (status, headers, html);
+            };
+
+            // Sentinel value 0 means we followed a redirect — go back to the outer loop.
+            if resp_status == 0 {
                 continue;
             }
 
-            // Terminal response (non-redirect, or redirect without Location).
-            let headers = extract_headers(resp.headers());
-
-            if !headers
-                .get("content-type")
-                .map(|ct| ct.contains("utf-8") || ct.contains("UTF-8") || ct.contains("text/html"))
-                .unwrap_or(true)
-            {
-                tracing::warn!(url = %current, "non-UTF-8 content-type detected; decoding may be lossy");
-            }
-
-            let html = resp.text().await.map_err(|e| SeoError::Fetch {
-                url: current.to_string(),
-                source: e,
-            })?;
-
             return Ok(PageData {
                 url: current,
-                status,
+                status: resp_status,
                 redirect_chain: chain,
-                html,
-                headers,
+                html: resp_html,
+                headers: resp_headers,
                 depth: 0,
             });
         }
@@ -118,6 +163,7 @@ fn extract_headers(map: &HeaderMap) -> Headers {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::num::NonZeroU32;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -126,7 +172,7 @@ mod tests {
             root: format!("{}/", server.uri()).parse().unwrap(),
             depth: 0,
             concurrency: 1,
-            rate_per_host: 2,
+            rate_per_host: 1000,
             redis_url: None,
             user_agent: "test-agent".to_owned(),
             timeout_secs: 10,
@@ -136,7 +182,9 @@ mod tests {
             no_color: true,
             output_json: None,
         };
-        Fetcher::new(&config).unwrap()
+        let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
+        let rate_limiter = Arc::new(HostRateLimiter::new(qps));
+        Fetcher::new(&config, rate_limiter).unwrap()
     }
 
     #[tokio::test]
@@ -254,6 +302,107 @@ mod tests {
         assert!(
             matches!(result, Err(SeoError::RedirectLoop { .. })),
             "expected RedirectLoop, got {result:?}"
+        );
+    }
+
+    /// wiremock returns 429 on the first call, 200 on the second call.
+    /// Final status must be 200, and the mock must have been hit exactly 2 times.
+    #[tokio::test]
+    async fn fetch_retries_429_once_then_200() {
+        let server = MockServer::start().await;
+
+        // First call: 429, no Retry-After header (exponential backoff: 1s for attempt 0)
+        // Second call: 200
+        Mock::given(method("GET"))
+            .and(path("/rate-limited"))
+            .respond_with(ResponseTemplate::new(429))
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/rate-limited"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/html; charset=utf-8")
+                    .set_body_string("<html><body>ok</body></html>"),
+            )
+            .mount(&server)
+            .await;
+
+        let fetcher = test_fetcher(&server).await;
+        let url: Url = format!("{}/rate-limited", server.uri()).parse().unwrap();
+        let page = fetcher.fetch(&url).await.unwrap();
+
+        assert_eq!(page.status, 200);
+
+        let received = server.received_requests().await.unwrap();
+        assert_eq!(received.len(), 2, "expected exactly 2 requests (1 retry)");
+    }
+
+    /// wiremock returns 503 with Retry-After: 1 on first call, 200 on second.
+    /// Final status must be 200.
+    #[tokio::test]
+    async fn fetch_retries_503_with_retry_after() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/unavailable"))
+            .respond_with(ResponseTemplate::new(503).insert_header("retry-after", "1"))
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/unavailable"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-type", "text/html; charset=utf-8")
+                    .set_body_string("<html><body>back</body></html>"),
+            )
+            .mount(&server)
+            .await;
+
+        let fetcher = test_fetcher(&server).await;
+        let url: Url = format!("{}/unavailable", server.uri()).parse().unwrap();
+        let start = std::time::Instant::now();
+        let page = fetcher.fetch(&url).await.unwrap();
+        let elapsed = start.elapsed();
+
+        assert_eq!(page.status, 200);
+        assert!(
+            elapsed >= Duration::from_millis(900),
+            "Retry-After: 1 must be honored; elapsed was only {elapsed:?}",
+        );
+
+        let received = server.received_requests().await.unwrap();
+        assert_eq!(received.len(), 2, "expected exactly 2 requests (1 retry)");
+    }
+
+    /// wiremock returns 429 on all 4 attempts (initial + 3 retries).
+    /// Must return Ok(PageData { status: 429 }). Mock must be called exactly 4 times.
+    #[tokio::test]
+    async fn fetch_exhausts_retries_returns_last_status() {
+        let server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/always-limited"))
+            .respond_with(ResponseTemplate::new(429))
+            .mount(&server)
+            .await;
+
+        let fetcher = test_fetcher(&server).await;
+        let url: Url = format!("{}/always-limited", server.uri()).parse().unwrap();
+        let result = fetcher.fetch(&url).await;
+
+        let page = result.expect("exhausted retries should return Ok, not Err");
+        assert_eq!(page.status, 429, "final status should be 429");
+
+        let received = server.received_requests().await.unwrap();
+        assert_eq!(
+            received.len(),
+            4,
+            "expected exactly 4 requests (1 initial + 3 retries)"
         );
     }
 }
