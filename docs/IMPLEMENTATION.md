@@ -572,7 +572,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
   OR: keep `Dom` in a sync block, finish all sync work, drop it, THEN await site auditors.
 - Verify: integration test crawling 3-page mock site, assert all three in report.
 
-### 3.7 Wire crawler into pipeline
+### ✓ 3.7 Wire crawler into pipeline
 - `pipeline.rs`: `depth == 0` → single-page path; `depth > 0` → crawler engine.
 - Generate unique `job_id` (timestamp or uuid).
 - After completion: `frontier.clear()` or set EXPIRE on keys.
