@@ -541,7 +541,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - Add backoff on 429/503: respect `Retry-After`; otherwise exponential (1s, 2s, 4s, max 3 retries).
 - Verify: wiremock test returning 429 once then 200 — assert one retry.
 
-### 3.6 Worker pool engine (`src/crawler/engine.rs`)
+### ✓ 3.6 Worker pool engine (`src/crawler/engine.rs`)
 - Architecture:
   ```rust
   pub async fn run_crawl(
