@@ -92,6 +92,14 @@ pub async fn run_crawl(
         reports.push(report);
     }
 
+    // ── 6. Clean up Redis keys ───────────────────────────────────────────────
+    {
+        let mut f = frontier.lock().await;
+        if let Err(e) = f.clear().await {
+            tracing::warn!(error = %e, "failed to clear frontier after crawl");
+        }
+    }
+
     Ok(reports)
 }
 
