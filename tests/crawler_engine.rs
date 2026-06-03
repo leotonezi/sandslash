@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use sandslash::audit::{page_auditors, site_auditors};
 use sandslash::config::CrawlConfig;
-use sandslash::crawler::{Frontier, run_crawl};
+use sandslash::crawler::{Frontier, RobotsCache, run_crawl};
 use sandslash::fetcher::{Fetcher, HostRateLimiter};
 use url::Url;
 use wiremock::matchers::{method, path};
@@ -40,11 +40,13 @@ fn make_config(root: Url, depth: u32, max_pages: Option<usize>) -> CrawlConfig {
     }
 }
 
-/// Build a `Fetcher` for the given config.
-fn make_fetcher(config: &CrawlConfig) -> Fetcher {
+/// Build a `Fetcher` and its `HostRateLimiter` for the given config.
+fn make_fetcher(config: &CrawlConfig) -> (Fetcher, Arc<HostRateLimiter>) {
     let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
     let rate_limiter = Arc::new(HostRateLimiter::new(qps));
-    Fetcher::new(config, rate_limiter).expect("Fetcher::new must not fail in tests")
+    let fetcher = Fetcher::new(config, Arc::clone(&rate_limiter))
+        .expect("Fetcher::new must not fail in tests");
+    (fetcher, rate_limiter)
 }
 
 /// Helper: build HTML with a `<title>` and a list of `<a href>` links.
@@ -115,7 +117,9 @@ async fn crawls_3_page_site_returns_3_reports() {
 
     let root: Url = base.parse().expect("root URL must parse");
     let config = Arc::new(make_config(root.clone(), 1, None));
-    let fetcher = Arc::new(make_fetcher(&config));
+    let (fetcher, rate_limiter) = make_fetcher(&config);
+    let (fetcher, rate_limiter) = (Arc::new(fetcher), rate_limiter);
+    let robots_cache = Arc::new(RobotsCache::new());
 
     let id = job_id("3page");
     let mut frontier = Frontier::new(REDIS_URL, id)
@@ -126,7 +130,7 @@ async fn crawls_3_page_site_returns_3_reports() {
     let pa = Arc::new(page_auditors());
     let sa = Arc::new(site_auditors());
 
-    let reports = run_crawl(config, fetcher, frontier, pa, sa)
+    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
         .await
         .expect("run_crawl must succeed");
 
@@ -188,7 +192,9 @@ async fn max_pages_cap_respected() {
         .parse()
         .expect("root URL must parse");
     let config = Arc::new(make_config(root.clone(), 2, Some(1)));
-    let fetcher = Arc::new(make_fetcher(&config));
+    let (fetcher, rate_limiter) = make_fetcher(&config);
+    let (fetcher, rate_limiter) = (Arc::new(fetcher), rate_limiter);
+    let robots_cache = Arc::new(RobotsCache::new());
 
     let id = job_id("maxpages");
     let mut frontier = Frontier::new(REDIS_URL, id)
@@ -199,7 +205,7 @@ async fn max_pages_cap_respected() {
     let pa = Arc::new(page_auditors());
     let sa = Arc::new(site_auditors());
 
-    let reports = run_crawl(config, fetcher, frontier, pa, sa)
+    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
         .await
         .expect("run_crawl must succeed");
 
@@ -259,7 +265,9 @@ async fn fetch_error_skipped_crawl_continues() {
         .parse()
         .expect("root URL must parse");
     let config = Arc::new(make_config(root.clone(), 1, None));
-    let fetcher = Arc::new(make_fetcher(&config));
+    let (fetcher, rate_limiter) = make_fetcher(&config);
+    let (fetcher, rate_limiter) = (Arc::new(fetcher), rate_limiter);
+    let robots_cache = Arc::new(RobotsCache::new());
 
     let id = job_id("fetcherr");
     let mut frontier = Frontier::new(REDIS_URL, id)
@@ -272,7 +280,7 @@ async fn fetch_error_skipped_crawl_continues() {
 
     // A 500 is not a fetch error (it's a valid HTTP response), so all 3 pages
     // should appear in the report.
-    let reports = run_crawl(config, fetcher, frontier, pa, sa)
+    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
         .await
         .expect("run_crawl must not fail even when pages return 500");
 

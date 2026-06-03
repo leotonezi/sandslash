@@ -42,12 +42,6 @@ fn make_config(server: &MockServer) -> CrawlConfig {
     }
 }
 
-fn make_fetcher(config: &CrawlConfig) -> Fetcher {
-    let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
-    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
-    Fetcher::new(config, rate_limiter).unwrap()
-}
-
 /// robots.txt returns 404 → robots.missing Warning
 #[tokio::test]
 async fn robots_404_emits_missing_warning() {
