@@ -610,7 +610,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** HEAD-hostile servers return 405 or close connection — always have GET fallback.
 - Verify: wiremock with one 200, one 404, one 500 link — assert correct findings.
 
-### 4.2 Encoding robustness (`src/fetcher/client.rs`)
+### ✓ 4.2 Encoding robustness (`src/fetcher/client.rs`)
 - Replace `.text().await` with:
   1. `let bytes = resp.bytes().await?;`
   2. Read charset from `Content-Type` header.
