@@ -77,7 +77,7 @@ impl SiteAuditor for SitemapAuditor {
         Category::Crawlability
     }
 
-    async fn audit(&self, page: &PageData, ctx: &AuditContext<'_>) -> Vec<Finding> {
+    async fn audit(&self, page: &PageData, ctx: &AuditContext) -> Vec<Finding> {
         let missing_finding = || {
             finding(
                 "sitemap.missing",

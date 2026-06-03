@@ -53,6 +53,10 @@ pub struct Cli {
     /// Write JSON report to PATH. When set, the terminal report goes to stdout; otherwise JSON goes to stdout and the terminal report goes to stderr.
     #[arg(short = 'o', long)]
     pub output: Option<PathBuf>,
+
+    /// Also check external (off-host) links for broken URLs.
+    #[arg(long, default_value_t = false)]
+    pub check_external_links: bool,
 }
 
 impl Cli {
@@ -73,6 +77,7 @@ impl Cli {
             quiet: self.quiet,
             no_color: self.no_color,
             output_json: self.output,
+            check_external_links: self.check_external_links,
         })
     }
 }

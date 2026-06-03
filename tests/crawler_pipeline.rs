@@ -96,6 +96,7 @@ mod tests {
             quiet: true,
             no_color: true,
             output_json: None,
+            check_external_links: false,
         };
 
         let report = sandslash::pipeline::run(config)

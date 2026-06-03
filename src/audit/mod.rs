@@ -1,5 +1,6 @@
 pub mod headings;
 pub mod https;
+pub mod links;
 pub mod metadata;
 
 // Phase 2+
@@ -8,6 +9,8 @@ pub mod opengraph;
 pub mod redirects;
 pub mod robots;
 pub mod sitemap;
+
+use std::sync::Arc;
 
 use async_trait::async_trait;
 
@@ -26,12 +29,15 @@ pub trait PageAuditor: Send + Sync {
 pub trait SiteAuditor: Send + Sync {
     fn id(&self) -> &'static str;
     fn category(&self) -> Category;
-    async fn audit(&self, page: &PageData, ctx: &AuditContext<'_>) -> Vec<Finding>;
+    async fn audit(&self, page: &PageData, ctx: &AuditContext) -> Vec<Finding>;
 }
 
-pub struct AuditContext<'a> {
-    pub config: &'a CrawlConfig,
-    pub fetcher: &'a Fetcher,
+/// Context passed to every [`SiteAuditor`].
+///
+/// Uses `Arc` so auditors can clone `fetcher` into async tasks without lifetime constraints.
+pub struct AuditContext {
+    pub config: Arc<CrawlConfig>,
+    pub fetcher: Arc<Fetcher>,
 }
 
 pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
@@ -49,6 +55,7 @@ pub fn site_auditors() -> Vec<Box<dyn SiteAuditor>> {
     vec![
         Box::new(robots::RobotsAuditor),
         Box::new(sitemap::SitemapAuditor),
+        Box::new(links::BrokenLinksAuditor),
     ]
 }
 

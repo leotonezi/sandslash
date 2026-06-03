@@ -65,8 +65,8 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         };
 
         let ctx = AuditContext {
-            config: &config,
-            fetcher: &fetcher,
+            config: Arc::new(config.clone()),
+            fetcher: Arc::clone(&fetcher),
         };
         for auditor in crate::audit::site_auditors() {
             let mut f = auditor.audit(&page_data, &ctx).await;
@@ -209,6 +209,7 @@ mod tests {
             quiet: true,
             no_color: true,
             output_json: None,
+            check_external_links: false,
         }
     }
 
