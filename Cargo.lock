@@ -1859,6 +1859,7 @@ dependencies = [
  "comfy-table",
  "dashmap",
  "encoding_rs",
+ "futures",
  "governor",
  "indicatif",
  "nonzero_ext",

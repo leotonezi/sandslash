@@ -16,6 +16,7 @@ pub struct CrawlConfig {
     pub quiet: bool,
     pub no_color: bool,
     pub output_json: Option<PathBuf>,
+    pub check_external_links: bool,
 }
 
 impl CrawlConfig {

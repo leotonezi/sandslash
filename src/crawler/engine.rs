@@ -247,8 +247,8 @@ async fn worker_loop(
 
         // ── Site audits (async — must be outside spawn_blocking) ─────────────
         let ctx = AuditContext {
-            config: &config,
-            fetcher: &fetcher,
+            config: Arc::clone(&config),
+            fetcher: Arc::clone(&fetcher),
         };
         for auditor in site_auditors.iter() {
             let mut f = auditor.audit(&page_data, &ctx).await;

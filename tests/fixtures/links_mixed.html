@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Links fixture</title></head>
+<body>
+  <!-- internal relative -->
+  <a href="/ok">ok</a>
+  <!-- internal absolute same host -->
+  <a href="http://example.com/missing">missing</a>
+  <!-- internal 500 -->
+  <a href="/broken">broken</a>
+  <!-- HEAD-hostile (405 on HEAD, 200 on GET) -->
+  <a href="/head-hostile">head-hostile</a>
+  <!-- duplicate of /ok (should be deduplicated) -->
+  <a href="/ok">ok again</a>
+  <!-- fragment-only (should be ignored) -->
+  <a href="#section">section</a>
+  <!-- mailto (should be ignored) -->
+  <a href="mailto:foo@bar.com">email</a>
+  <!-- external link -->
+  <a href="http://external.example.org/page">external</a>
+</body>
+</html>

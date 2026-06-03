@@ -58,6 +58,7 @@ async fn pipeline_runs_all_auditors() {
         quiet: false,
         no_color: true,
         output_json: Some(json_path.clone()),
+        check_external_links: false,
     };
 
     let report = pipeline::run(config).await.expect("pipeline must succeed");

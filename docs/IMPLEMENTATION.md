@@ -459,7 +459,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 
 ---
 
-## Phase 3 — Crawler: Redis frontier, worker pool, rate limiter (target: 4–5 days)
+## ✓ Phase 3 — Crawler: Redis frontier, worker pool, rate limiter (DONE)
 
 Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into one report.
 
@@ -590,7 +590,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 
 ## Phase 4 — Polish (target: 3–4 days)
 
-### 4.1 Broken-link auditor at scale (`src/audit/links.rs`)
+### ✓ 4.1 Broken-link auditor at scale (`src/audit/links.rs`)
 - Site auditor. Collect all `<a href>` URLs across all pages. HEAD each unique URL; 405/error → GET fallback.
 - Use `Semaphore` for bounded concurrency (e.g. 32 in-flight):
   ```rust

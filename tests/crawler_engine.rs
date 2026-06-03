@@ -37,6 +37,7 @@ fn make_config(root: Url, depth: u32, max_pages: Option<usize>) -> CrawlConfig {
         quiet: true,
         no_color: true,
         output_json: None,
+        check_external_links: false,
     }
 }
 
