@@ -43,6 +43,7 @@ use super::{Frontier, RobotsCache};
 /// The caller is responsible for either:
 /// - Awaiting all handles + draining the channel (normal path), or
 /// - Aborting handles + draining the channel (timeout path).
+#[allow(clippy::too_many_arguments)]
 pub async fn spawn_crawl_workers(
     config: Arc<CrawlConfig>,
     fetcher: Arc<Fetcher>,
