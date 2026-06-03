@@ -5,15 +5,64 @@ use crate::model::{Category, Finding, PageData, Severity};
 
 pub struct RobotsAuditor;
 
-struct ParsedRobots {
-    star_disallow_all: bool,
-    has_sitemap: bool,
+/// Parsed representation of a robots.txt file, covering the fields used both
+/// by `RobotsAuditor` (for SEO findings) and by `RobotsCache` (for crawl gating).
+#[derive(Debug, Default, Clone)]
+pub struct ParsedRules {
+    /// `(ua_token_lowercased, disallow_path_prefixes)` per User-agent block.
+    pub disallow_prefixes: Vec<(String, Vec<String>)>,
+    /// `(ua_token_lowercased, allow_path_prefixes)` per User-agent block.
+    pub allow_prefixes: Vec<(String, Vec<String>)>,
+    /// `(ua_token_lowercased, crawl_delay_seconds)` per User-agent block.
+    pub crawl_delays: Vec<(String, f64)>,
+    /// `true` when `User-agent: *` has `Disallow: /`.
+    pub star_disallow_all: bool,
+    /// `true` when at least one `Sitemap:` directive is present.
+    pub has_sitemap: bool,
 }
 
-fn parse_robots(body: &str) -> ParsedRobots {
-    let mut in_star_block = false;
-    let mut star_disallow_all = false;
-    let mut has_sitemap = false;
+/// Parse a robots.txt body into [`ParsedRules`].
+///
+/// This is a pure, synchronous function — no I/O.
+///
+/// Rules:
+/// - Directives are case-insensitive.
+/// - `User-agent` tokens are stored lowercased.
+/// - A blank line ends the current record block (a new `User-agent` starts a new block).
+/// - Inline `#` comments are stripped.
+pub(crate) fn parse_rules(body: &str) -> ParsedRules {
+    // Accumulated per-block data (may have multiple UA tokens per block).
+    // We normalise to one entry per UA token in the output vecs.
+    let mut result = ParsedRules::default();
+
+    // Track the current block's UA tokens (lowercased) and their directives.
+    let mut current_uas: Vec<String> = Vec::new();
+    let mut current_disallows: Vec<String> = Vec::new();
+    let mut current_allows: Vec<String> = Vec::new();
+    let mut current_delay: Option<f64> = None;
+
+    let flush_block = |uas: &mut Vec<String>,
+                       disallows: &mut Vec<String>,
+                       allows: &mut Vec<String>,
+                       delay: &mut Option<f64>,
+                       result: &mut ParsedRules| {
+        for ua in uas.drain(..) {
+            if !disallows.is_empty() {
+                result
+                    .disallow_prefixes
+                    .push((ua.clone(), disallows.clone()));
+            }
+            if !allows.is_empty() {
+                result.allow_prefixes.push((ua.clone(), allows.clone()));
+            }
+            if let Some(d) = *delay {
+                result.crawl_delays.push((ua.clone(), d));
+            }
+        }
+        disallows.clear();
+        allows.clear();
+        *delay = None;
+    };
 
     for raw_line in body.lines() {
         // Strip inline comment and surrounding whitespace.
@@ -24,7 +73,13 @@ fn parse_robots(body: &str) -> ParsedRobots {
 
         if line.is_empty() {
             // Blank line ends the current record block.
-            in_star_block = false;
+            flush_block(
+                &mut current_uas,
+                &mut current_disallows,
+                &mut current_allows,
+                &mut current_delay,
+                &mut result,
+            );
             continue;
         }
 
@@ -36,24 +91,53 @@ fn parse_robots(body: &str) -> ParsedRobots {
 
         match directive.to_ascii_lowercase().as_str() {
             "user-agent" => {
-                in_star_block = value == "*";
+                let ua_lower = value.to_ascii_lowercase();
+                // If we're already accumulating a block AND this is a fresh User-agent
+                // line (not part of the ongoing UA list at the top of a block), we need
+                // to handle consecutive UA lines (common pattern: multiple UAs share rules).
+                // The convention is: consecutive User-agent lines before any Disallow/Allow
+                // belong to the same block. A blank line separates blocks.
+                // We simply accumulate all UA tokens until we see the first non-UA directive.
+                current_uas.push(ua_lower.clone());
+
+                // Track star_disallow_all for the auditor (set lazily below).
             }
             "disallow" => {
-                if in_star_block && value == "/" {
-                    star_disallow_all = true;
+                if !value.is_empty() {
+                    current_disallows.push(value.to_owned());
+                    // Check star_disallow_all: any current UA is "*" and value == "/"
+                    if value == "/" && current_uas.iter().any(|ua| ua == "*") {
+                        result.star_disallow_all = true;
+                    }
+                }
+            }
+            "allow" => {
+                if !value.is_empty() {
+                    current_allows.push(value.to_owned());
+                }
+            }
+            "crawl-delay" => {
+                if let Ok(secs) = value.parse::<f64>() {
+                    current_delay = Some(secs);
                 }
             }
             "sitemap" if !value.is_empty() => {
-                has_sitemap = true;
+                result.has_sitemap = true;
             }
             _ => {}
         }
     }
 
-    ParsedRobots {
-        star_disallow_all,
-        has_sitemap,
-    }
+    // Flush the final block (no trailing blank line required).
+    flush_block(
+        &mut current_uas,
+        &mut current_disallows,
+        &mut current_allows,
+        &mut current_delay,
+        &mut result,
+    );
+
+    result
 }
 
 #[async_trait]
@@ -91,7 +175,7 @@ impl SiteAuditor for RobotsAuditor {
             return vec![robots_missing()];
         }
 
-        let parsed = parse_robots(&fetched.html);
+        let parsed = parse_rules(&fetched.html);
         let mut out = Vec::new();
 
         if parsed.star_disallow_all {
@@ -123,7 +207,7 @@ mod tests {
     use super::*;
 
     fn assert_parsed(body: &str, star_disallow_all: bool, has_sitemap: bool) {
-        let result = parse_robots(body);
+        let result = parse_rules(body);
         assert_eq!(
             result.star_disallow_all, star_disallow_all,
             "star_disallow_all mismatch for input: {body:?}"
@@ -192,5 +276,61 @@ mod tests {
         // Blank line ends the * block; subsequent Disallow: / is under a new agent
         let body = "User-agent: *\nAllow: /\n\nUser-agent: Badbot\nDisallow: /\n";
         assert_parsed(body, false, false);
+    }
+
+    // ── Additional tests for the new parsed fields ─────────────────────────
+
+    #[test]
+    fn disallow_prefix_captured_in_star_block() {
+        let body = "User-agent: *\nDisallow: /private\n";
+        let rules = parse_rules(body);
+        let star = rules
+            .disallow_prefixes
+            .iter()
+            .find(|(ua, _)| ua == "*")
+            .expect("expected * disallow entry");
+        assert!(star.1.contains(&"/private".to_owned()));
+    }
+
+    #[test]
+    fn allow_prefix_captured() {
+        let body = "User-agent: *\nAllow: /public\nDisallow: /\n";
+        let rules = parse_rules(body);
+        let star_allow = rules
+            .allow_prefixes
+            .iter()
+            .find(|(ua, _)| ua == "*")
+            .expect("expected * allow entry");
+        assert!(star_allow.1.contains(&"/public".to_owned()));
+    }
+
+    #[test]
+    fn crawl_delay_parsed() {
+        let body = "User-agent: *\nCrawl-delay: 2\n";
+        let rules = parse_rules(body);
+        let (_, delay) = rules
+            .crawl_delays
+            .iter()
+            .find(|(ua, _)| ua == "*")
+            .expect("expected * crawl-delay");
+        assert!((*delay - 2.0f64).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn ua_specific_block_captured() {
+        let body = "User-agent: Sandslash\nDisallow: /admin\n\nUser-agent: *\nDisallow: /private\n";
+        let rules = parse_rules(body);
+        let sandslash = rules
+            .disallow_prefixes
+            .iter()
+            .find(|(ua, _)| ua == "sandslash")
+            .expect("expected sandslash disallow entry");
+        assert!(sandslash.1.contains(&"/admin".to_owned()));
+        let star = rules
+            .disallow_prefixes
+            .iter()
+            .find(|(ua, _)| ua == "*")
+            .expect("expected * disallow entry");
+        assert!(star.1.contains(&"/private".to_owned()));
     }
 }

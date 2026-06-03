@@ -1,10 +1,18 @@
 use sandslash::audit::robots::RobotsAuditor;
 use sandslash::audit::{AuditContext, SiteAuditor};
 use sandslash::config::CrawlConfig;
-use sandslash::fetcher::Fetcher;
+use sandslash::fetcher::{Fetcher, HostRateLimiter};
 use sandslash::model::{Headers, PageData, Severity};
+use std::num::NonZeroU32;
+use std::sync::Arc;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
+
+fn make_fetcher(config: &CrawlConfig) -> Fetcher {
+    let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
+    let rl = Arc::new(HostRateLimiter::new(qps));
+    Fetcher::new(config, rl).expect("Fetcher::new must succeed in tests")
+}
 
 fn make_page(base_url: &str) -> PageData {
     PageData {
@@ -22,7 +30,7 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         root: format!("{}/", server.uri()).parse().unwrap(),
         depth: 0,
         concurrency: 1,
-        rate_per_host: 10,
+        rate_per_host: 1000,
         redis_url: None,
         user_agent: "test-agent".to_owned(),
         timeout_secs: 10,
@@ -46,7 +54,7 @@ async fn robots_404_emits_missing_warning() {
         .await;
 
     let config = make_config(&server);
-    let fetcher = Fetcher::new(&config).unwrap();
+    let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,
@@ -74,7 +82,7 @@ async fn robots_disallow_all_emits_critical() {
         .await;
 
     let config = make_config(&server);
-    let fetcher = Fetcher::new(&config).unwrap();
+    let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,
@@ -116,7 +124,7 @@ async fn robots_no_sitemap_emits_info() {
         .await;
 
     let config = make_config(&server);
-    let fetcher = Fetcher::new(&config).unwrap();
+    let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,
@@ -144,7 +152,7 @@ async fn robots_clean_emits_no_findings() {
         .await;
 
     let config = make_config(&server);
-    let fetcher = Fetcher::new(&config).unwrap();
+    let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
         config: &config,
         fetcher: &fetcher,

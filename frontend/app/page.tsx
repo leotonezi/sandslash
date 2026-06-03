@@ -45,24 +45,34 @@ export default function Home() {
 
   return (
     <main>
-      <h1>seo-rs audit</h1>
+      <div className="hero">
+        <h1>Blazing-fast SEO audits,<br />built with Rust.</h1>
+        <p className="hero-sub">Checks titles, meta tags, headings, canonicals, and more.</p>
+      </div>
 
-      <form className="audit-form" onSubmit={handleSubmit}>
-        <input
-          type="url"
-          placeholder="https://example.com"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          required
-          disabled={loading}
-          aria-label="URL to audit"
-        />
-        <button type="submit" disabled={loading || url.trim() === ""}>
-          {loading ? "Running…" : "Run Audit"}
-        </button>
-      </form>
-
-      {loading && <p className="loading-msg">Running audit, please wait…</p>}
+      <section className="audit-card">
+        <form className="audit-form" onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="audit-url" className="field-label">Website URL</label>
+            <p className="field-hint">Enter the full address of the page or site you want to audit.</p>
+            <div className="input-row">
+              <input
+                id="audit-url"
+                type="url"
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <button type="submit" disabled={loading || url.trim() === ""}>
+                {loading ? "Running…" : "Run Audit"}
+              </button>
+            </div>
+          </div>
+        </form>
+        {loading && <p className="loading-msg">Running audit, please wait…</p>}
+      </section>
 
       {error && (
         <div className="error-box">
