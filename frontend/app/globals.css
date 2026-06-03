@@ -1,3 +1,46 @@
+:root,
+[data-theme="light"] {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --text-secondary: #374151;
+  --input-bg: #f9fafb;
+  --input-bg-focus: #ffffff;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-ring: rgba(99, 102, 241, 0.15);
+  --disabled: #9ca3af;
+  --error-bg: #fef2f2;
+  --error-border: #fca5a5;
+  --error-text: #b91c1c;
+  --table-head: #f3f4f6;
+  --row-border: #e5e7eb;
+  --row-alt: #f9fafb;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-secondary: #cbd5e1;
+  --input-bg: #0f172a;
+  --input-bg-focus: #1e293b;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-ring: rgba(129, 140, 248, 0.2);
+  --disabled: #475569;
+  --error-bg: #1e0f0f;
+  --error-border: #7f1d1d;
+  --error-text: #fca5a5;
+  --table-head: #1e293b;
+  --row-border: #334155;
+  --row-alt: #0f172a;
+}
+
 *,
 *::before,
 *::after {
@@ -7,10 +50,77 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: #f9fafb;
-  color: #111827;
+  font-family: var(--font-montserrat), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.5;
+  transition: background 0.2s, color 0.2s;
+}
+
+.navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.navbar-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.625rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  flex: 1;
+}
+
+.navbar-logo {
+  display: block;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .navbar-logo {
+  filter: invert(1);
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.hero {
+  margin-bottom: 2rem;
+}
+
+.hero h1 {
+  margin-bottom: 0.25rem;
+}
+
+.hero-sub {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
 }
 
 .container {
@@ -68,53 +178,91 @@ h3 {
   font-weight: 700;
 }
 
-/* Form */
+/* Audit card */
+.audit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+  transition: background 0.2s, border-color 0.2s;
+}
+
 .audit-form {
+  display: contents;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.input-row {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 2rem;
   flex-wrap: wrap;
 }
 
-.audit-form input[type="url"] {
+.input-row input[type="url"] {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  font-size: 1rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
   outline: none;
+  color: var(--text);
+  background: var(--input-bg);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.2s;
 }
 
-.audit-form input[type="url"]:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+.input-row input[type="url"]:focus {
+  border-color: var(--accent);
+  background: var(--input-bg-focus);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
-.audit-form button {
-  padding: 0.5rem 1.25rem;
-  background: #4f46e5;
+.input-row button {
+  padding: 0.625rem 1.5rem;
+  background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 0.375rem;
-  font-size: 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s;
 }
 
-.audit-form button:hover {
-  background: #4338ca;
+.input-row button:hover {
+  background: var(--accent-hover);
 }
 
-.audit-form button:disabled {
-  background: #9ca3af;
+.input-row button:disabled {
+  background: var(--disabled);
   cursor: not-allowed;
 }
 
 /* Report */
 .report-header {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
@@ -122,7 +270,7 @@ h3 {
 
 .report-header .meta {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 0.25rem;
 }
 
@@ -133,8 +281,8 @@ h3 {
 }
 
 .page-block {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1rem;
@@ -144,7 +292,7 @@ h3 {
   font-family: monospace;
   font-size: 0.875rem;
   word-break: break-all;
-  color: #374151;
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
@@ -160,12 +308,12 @@ th,
 td {
   text-align: left;
   padding: 0.375rem 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--row-border);
 }
 
 th {
   font-weight: 600;
-  background: #f3f4f6;
+  background: var(--table-head);
 }
 
 /* Findings list */
@@ -176,7 +324,7 @@ th {
 
 .findings-list li {
   padding: 0.375rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--row-border);
   display: flex;
   gap: 0.5rem;
   align-items: baseline;
@@ -189,21 +337,21 @@ th {
 .check-id {
   font-family: monospace;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
 /* Error / loading */
 .error-box {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #b91c1c;
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
   border-radius: 0.375rem;
   padding: 0.875rem 1rem;
   margin-bottom: 1rem;
 }
 
 .loading-msg {
-  color: #6b7280;
+  color: var(--text-muted);
   font-style: italic;
 }

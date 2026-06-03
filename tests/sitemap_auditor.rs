@@ -30,7 +30,7 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         root: format!("{}/", server.uri()).parse().unwrap(),
         depth: 0,
         concurrency: 1,
-        rate_per_host: 10,
+        rate_per_host: 1000,
         redis_url: None,
         user_agent: "test-agent".to_owned(),
         timeout_secs: 10,
@@ -40,6 +40,12 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         no_color: true,
         output_json: None,
     }
+}
+
+fn make_fetcher(config: &CrawlConfig) -> Fetcher {
+    let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
+    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
+    Fetcher::new(config, rate_limiter).unwrap()
 }
 
 const VALID_SITEMAP: &str = r#"<?xml version="1.0" encoding="UTF-8"?>

@@ -3,6 +3,7 @@ name = "sandslash"
 version = "0.4.0"
 edition = "2024"
 description = "CLI SEO auditing tool"
+license = "AGPL-3.0-only"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
