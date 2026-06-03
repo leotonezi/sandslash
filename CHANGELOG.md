@@ -4,7 +4,36 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.5.0] - 2026-06-03
+
+### Bug Fixes
+
+- **fetcher**: Collapse nested if to satisfy clippy::collapsible-if ([638a9f6](https://github.com/leotonezi/sandslash/commit/638a9f60c3d7a3cd9303e4463d93a6b4025c9788))
+- **tests**: Remove duplicate make_fetcher, update run_crawl call sites ([eb5600f](https://github.com/leotonezi/sandslash/commit/eb5600fbf771fa7dded97d3b2502fecee9923e71))
+- **ci**: Collapse nested if for clippy, reformat run_crawl calls for fmt ([5f5af69](https://github.com/leotonezi/sandslash/commit/5f5af69f7b55b660bf5b63a8a31103fd67bb179c))
+
+### Chores
+
+- Add AGPL-3.0 license, deploy guide, and .DS_Store gitignore ([2b6749e](https://github.com/leotonezi/sandslash/commit/2b6749ea38eb40cf54e07e817924c3b18f1aa757))
+- Release sandslash version 0.4.0 ([60a9b67](https://github.com/leotonezi/sandslash/commit/60a9b674cda154152c65dc0d381312d43955d5e5))
+
+### Features
+
+- Robots-gated crawl — RobotsCache, set_min_interval, parse_rules, engine integration (closes #49) ([9698ea0](https://github.com/leotonezi/sandslash/commit/9698ea09312295d7633c2f86e362aa902fa33c46))
+- **frontend**: Rebrand to Sandslash with dark theme and UI polish ([c088447](https://github.com/leotonezi/sandslash/commit/c088447eba5c37b2c8a97a3ee4652e539c5d63eb))
+- Integrate HostRateLimiter into Fetcher with 429/503 retry backoff (closes #43) ([4e57678](https://github.com/leotonezi/sandslash/commit/4e57678eda9439d5a9d11f36782bffb806f5add7))
+- Implement worker-pool crawl engine (closes #45) ([2d194e5](https://github.com/leotonezi/sandslash/commit/2d194e52aa9bae209bac5fc960866c36bc356c1d))
+- Wire crawler pipeline — branch pipeline on depth, add frontier.clear() and integration test (closes #47) ([3271897](https://github.com/leotonezi/sandslash/commit/3271897cf5562d80f11418a372d54ee63e4868a2))
+
+### Merge
+
+- Resolve conflicts with development — keep 3.8 robots gating ([95f16fe](https://github.com/leotonezi/sandslash/commit/95f16fe9644c54a45a7a0f691206d5322c1d90c9))
+
 ## [0.4.0] - 2026-06-01
+
+### Chores
+
+- Release sandslash version 0.4.0 ([49a91d3](https://github.com/leotonezi/sandslash/commit/49a91d32097323076904008270b9c315a68c6545))
 
 ### Features
 
@@ -78,6 +107,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.5.0]: https://github.com/leotonezi/sandslash/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/leotonezi/sandslash/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/leotonezi/sandslash/compare/v0.2.0...v0.3.0
 
