@@ -282,6 +282,7 @@ mod tests {
             max_pages: None,
             global_timeout_secs: None,
             respect_robots: false,
+            validate_sitemap: false,
             quiet: true,
             no_color: true,
             verbose: false,

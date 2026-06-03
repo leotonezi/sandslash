@@ -47,6 +47,10 @@ pub struct Cli {
     #[arg(long, default_value_t = false)]
     pub ignore_robots: bool,
 
+    /// HEAD-probe every <loc> URL in the sitemap to find broken links.
+    #[arg(long, default_value_t = false)]
+    pub validate_sitemap: bool,
+
     /// Print only the final site score; JSON output is suppressed unless --output is set.
     #[arg(short, long)]
     pub quiet: bool,
@@ -84,6 +88,7 @@ impl Cli {
             max_pages: self.max_pages,
             global_timeout_secs: self.global_timeout,
             respect_robots: !self.ignore_robots,
+            validate_sitemap: self.validate_sitemap,
             quiet: self.quiet,
             no_color: self.no_color,
             verbose: self.verbose,

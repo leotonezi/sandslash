@@ -37,6 +37,7 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         max_pages: None,
         global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: false,
         no_color: true,
         verbose: false,

@@ -16,6 +16,7 @@ pub struct CrawlConfig {
     /// crawler is aborted and a partial `AuditReport` is returned.
     pub global_timeout_secs: Option<u64>,
     pub respect_robots: bool,
+    pub validate_sitemap: bool,
     pub quiet: bool,
     pub no_color: bool,
     pub verbose: bool,
