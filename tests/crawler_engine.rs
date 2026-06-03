@@ -130,9 +130,17 @@ async fn crawls_3_page_site_returns_3_reports() {
     let pa = Arc::new(page_auditors());
     let sa = Arc::new(site_auditors());
 
-    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
-        .await
-        .expect("run_crawl must succeed");
+    let reports = run_crawl(
+        config,
+        fetcher,
+        frontier,
+        pa,
+        sa,
+        rate_limiter,
+        robots_cache,
+    )
+    .await
+    .expect("run_crawl must succeed");
 
     let urls: Vec<String> = reports.iter().map(|r| r.url.to_string()).collect();
 
@@ -205,9 +213,17 @@ async fn max_pages_cap_respected() {
     let pa = Arc::new(page_auditors());
     let sa = Arc::new(site_auditors());
 
-    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
-        .await
-        .expect("run_crawl must succeed");
+    let reports = run_crawl(
+        config,
+        fetcher,
+        frontier,
+        pa,
+        sa,
+        rate_limiter,
+        robots_cache,
+    )
+    .await
+    .expect("run_crawl must succeed");
 
     assert_eq!(
         reports.len(),
@@ -280,9 +296,17 @@ async fn fetch_error_skipped_crawl_continues() {
 
     // A 500 is not a fetch error (it's a valid HTTP response), so all 3 pages
     // should appear in the report.
-    let reports = run_crawl(config, fetcher, frontier, pa, sa, rate_limiter, robots_cache)
-        .await
-        .expect("run_crawl must not fail even when pages return 500");
+    let reports = run_crawl(
+        config,
+        fetcher,
+        frontier,
+        pa,
+        sa,
+        rate_limiter,
+        robots_cache,
+    )
+    .await
+    .expect("run_crawl must not fail even when pages return 500");
 
     assert_eq!(
         reports.len(),

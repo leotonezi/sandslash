@@ -96,18 +96,18 @@ impl HostRateLimiter {
             // Guard dropped here.
         };
 
-        if let Some(min) = min_interval {
-            if min > Duration::ZERO {
-                let last: Option<Instant> = {
-                    self.last_acquire.get(host).map(|v| *v)
-                    // Guard dropped here.
-                };
+        if let Some(min) = min_interval
+            && min > Duration::ZERO
+        {
+            let last: Option<Instant> = {
+                self.last_acquire.get(host).map(|v| *v)
+                // Guard dropped here.
+            };
 
-                if let Some(last_instant) = last {
-                    let elapsed = last_instant.elapsed();
-                    if elapsed < min {
-                        tokio::time::sleep(min - elapsed).await;
-                    }
+            if let Some(last_instant) = last {
+                let elapsed = last_instant.elapsed();
+                if elapsed < min {
+                    tokio::time::sleep(min - elapsed).await;
                 }
             }
         }
