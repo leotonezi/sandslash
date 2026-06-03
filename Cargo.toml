@@ -22,6 +22,7 @@ encoding_rs = "0.8"
 owo-colors = "4"
 comfy-table = "7"
 indicatif = "0.17"
+indicatif-log-bridge = "0.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dashmap = "6"

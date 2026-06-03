@@ -15,6 +15,7 @@ pub struct CrawlConfig {
     pub respect_robots: bool,
     pub quiet: bool,
     pub no_color: bool,
+    pub verbose: bool,
     pub output_json: Option<PathBuf>,
     pub check_external_links: bool,
 }

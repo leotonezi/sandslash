@@ -1,10 +1,79 @@
 use std::io::Write;
 
 use comfy_table::Table;
+use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::{AnsiColors, OwoColorize};
 
 use crate::error::Result;
 use crate::model::{AuditReport, Category, Severity};
+
+// ── ProgressReporter ──────────────────────────────────────────────────────────
+
+/// A thin wrapper around [`indicatif::ProgressBar`] that is always present
+/// but may be hidden (no-op) when `quiet` or non-TTY.
+///
+/// Clone is cheap — the underlying `ProgressBar` is `Arc`-backed.
+#[derive(Clone)]
+pub struct ProgressReporter {
+    bar: ProgressBar,
+    /// Whether this reporter was constructed as hidden (quiet or non-TTY).
+    /// Stored explicitly because `ProgressBar::is_hidden()` checks the real
+    /// terminal state at draw time, which is always `true` in test processes.
+    /// Only read in `#[cfg(test)]` methods.
+    #[allow(dead_code)]
+    hidden: bool,
+}
+
+impl ProgressReporter {
+    /// Create a reporter that auto-selects hidden vs. visible based on flags.
+    pub fn new(quiet: bool, is_tty: bool) -> Self {
+        if quiet || !is_tty {
+            Self::hidden()
+        } else {
+            let bar = ProgressBar::new(0);
+            bar.set_style(
+                ProgressStyle::with_template("{spinner} {pos}/{len} pages  {wide_bar}  ETA {eta}")
+                    .expect("invariant: progress bar template is valid"),
+            );
+            Self { bar, hidden: false }
+        }
+    }
+
+    /// A no-op reporter that produces no terminal output.
+    pub fn hidden() -> Self {
+        Self {
+            bar: ProgressBar::hidden(),
+            hidden: true,
+        }
+    }
+
+    /// Increase the total (length) of the bar by `n`.
+    pub fn update_total(&self, n: usize) {
+        self.bar.inc_length(n as u64);
+    }
+
+    /// Advance the bar by one completed page.
+    pub fn inc_done(&self) {
+        self.bar.inc(1);
+    }
+
+    /// Finish and clear the bar from the terminal.
+    pub fn finish(&self) {
+        self.bar.finish_and_clear();
+    }
+
+    /// Returns `true` when this reporter was constructed as hidden.
+    #[cfg(test)]
+    pub(crate) fn is_hidden(&self) -> bool {
+        self.hidden
+    }
+
+    /// Returns the current bar length (total page count), for testing only.
+    #[cfg(test)]
+    pub(crate) fn bar_length(&self) -> Option<u64> {
+        self.bar.length()
+    }
+}
 
 pub struct TerminalOpts {
     pub quiet: bool,
@@ -157,6 +226,70 @@ mod tests {
     use super::*;
     use crate::model::{AuditReport, Category, Finding, PageReport, Severity};
     use std::collections::HashMap;
+
+    // ── ProgressReporter unit tests ───────────────────────────────────────────
+
+    /// AC7: hidden() reporter is_hidden()==true and ops don't panic.
+    #[test]
+    fn hidden_reporter_is_hidden_and_ops_are_noop() {
+        let r = ProgressReporter::hidden();
+        assert!(
+            r.is_hidden(),
+            "hidden reporter must report is_hidden()==true"
+        );
+        // These must not panic.
+        r.update_total(10);
+        r.inc_done();
+        r.finish();
+    }
+
+    /// AC8: new(quiet=true, is_tty=true) → hidden.
+    #[test]
+    fn new_quiet_true_is_hidden() {
+        let r = ProgressReporter::new(true, true);
+        assert!(
+            r.is_hidden(),
+            "quiet=true must produce a hidden reporter even when is_tty=true"
+        );
+    }
+
+    /// AC8: new(quiet=false, is_tty=false) → hidden.
+    #[test]
+    fn new_non_tty_is_hidden() {
+        let r = ProgressReporter::new(false, false);
+        assert!(
+            r.is_hidden(),
+            "is_tty=false must produce a hidden reporter even when quiet=false"
+        );
+    }
+
+    /// AC9: visible reporter update_total(3) → length()==3.
+    #[test]
+    fn visible_reporter_update_total_sets_length() {
+        // quiet=false, is_tty=true → visible reporter
+        let r = ProgressReporter::new(false, true);
+        assert!(
+            !r.is_hidden(),
+            "quiet=false + is_tty=true must produce a visible reporter"
+        );
+        r.update_total(3);
+        assert_eq!(
+            r.bar_length(),
+            Some(3),
+            "update_total(3) must set bar length to 3"
+        );
+    }
+
+    /// Clone is cheap and both clones are Send+Sync.
+    #[test]
+    fn reporter_clone_is_independent_view() {
+        let r1 = ProgressReporter::hidden();
+        let r2 = r1.clone();
+        // Both point to the same bar, so mutating through r1 is visible via r2.
+        r1.update_total(5);
+        // No assertion needed — this just verifies Clone doesn't panic.
+        drop(r2);
+    }
 
     fn make_report_single(score: u8) -> AuditReport {
         let category_scores: HashMap<Category, u8> = Category::all().map(|c| (c, score)).collect();

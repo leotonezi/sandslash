@@ -265,6 +265,7 @@ mod tests {
             respect_robots: false,
             quiet: false,
             no_color: true,
+            verbose: false,
             output_json: None,
             check_external_links: false,
         };

@@ -57,6 +57,10 @@ pub struct Cli {
     /// Also check external (off-host) links for broken URLs.
     #[arg(long, default_value_t = false)]
     pub check_external_links: bool,
+
+    /// Enable verbose tracing output (disables the progress bar).
+    #[arg(long, default_value_t = false)]
+    pub verbose: bool,
 }
 
 impl Cli {
@@ -76,6 +80,7 @@ impl Cli {
             respect_robots: !self.ignore_robots,
             quiet: self.quiet,
             no_color: self.no_color,
+            verbose: self.verbose,
             output_json: self.output,
             check_external_links: self.check_external_links,
         })

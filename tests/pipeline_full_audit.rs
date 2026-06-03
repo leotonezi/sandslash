@@ -57,6 +57,7 @@ async fn pipeline_runs_all_auditors() {
         respect_robots: false,
         quiet: false,
         no_color: true,
+        verbose: false,
         output_json: Some(json_path.clone()),
         check_external_links: false,
     };

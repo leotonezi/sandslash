@@ -11,6 +11,7 @@ use crate::error::SeoError;
 use crate::fetcher::{Fetcher, HostRateLimiter};
 use crate::model::{AuditReport, Category, Finding, Headers, PageData, PageReport, Severity};
 use crate::parser::Dom;
+use crate::report::ProgressReporter;
 use crate::report::json::write_json;
 use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
@@ -88,6 +89,11 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
         let page_auditors = Arc::new(crate::audit::page_auditors());
         let site_auditors = Arc::new(crate::audit::site_auditors());
 
+        let reporter = {
+            use std::io::IsTerminal;
+            ProgressReporter::new(config.quiet, std::io::stderr().is_terminal())
+        };
+
         crate::crawler::run_crawl(
             Arc::new(config.clone()),
             Arc::clone(&fetcher),
@@ -96,6 +102,7 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
             site_auditors,
             Arc::clone(&rate_limiter),
             Arc::clone(&robots_cache),
+            reporter,
         )
         .await?
     };
@@ -208,6 +215,7 @@ mod tests {
             respect_robots: false,
             quiet: true,
             no_color: true,
+            verbose: false,
             output_json: None,
             check_external_links: false,
         }

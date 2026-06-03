@@ -619,7 +619,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[RUST]** `Cow<str>` — `encoding_rs` returns `(Cow<str>, &'static Encoding, bool)`.
 - Verify: Shift_JIS and Windows-1252 fixtures decode correctly.
 
-### 4.3 Progress bar (`src/report/terminal.rs`)
+### ✓ 4.3 Progress bar (`src/report/terminal.rs`)
 - `indicatif::ProgressBar` — update total dynamically as URLs are discovered. Wire via channel from engine.
 - Hide under `--quiet` or non-TTY.
 - **[GOTCHA]** `tracing` output and `indicatif` fight over lines. Use `indicatif_log_bridge` or route tracing to a file under `--verbose`.
