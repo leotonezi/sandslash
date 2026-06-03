@@ -94,17 +94,85 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
             ProgressReporter::new(config.quiet, std::io::stderr().is_terminal())
         };
 
-        crate::crawler::run_crawl(
-            Arc::new(config.clone()),
-            Arc::clone(&fetcher),
-            frontier,
-            page_auditors,
-            site_auditors,
-            Arc::clone(&rate_limiter),
-            Arc::clone(&robots_cache),
-            reporter,
-        )
-        .await?
+        if let Some(global_secs) = config.global_timeout_secs {
+            // ── Timeout path: spawn workers + wrap collection in timeout ──
+            let reporter_finish = reporter.clone();
+            let (handles, mut rx, crawl_frontier) = crate::crawler::spawn_crawl_workers(
+                Arc::new(config.clone()),
+                Arc::clone(&fetcher),
+                frontier,
+                page_auditors,
+                site_auditors,
+                Arc::clone(&rate_limiter),
+                Arc::clone(&robots_cache),
+                reporter,
+            )
+            .await?;
+
+            let timeout_dur = std::time::Duration::from_secs(global_secs);
+            let collect_fut = async {
+                let mut reports = Vec::new();
+                while let Some(report) = rx.recv().await {
+                    reports.push(report);
+                }
+                reports
+            };
+
+            match tokio::time::timeout(timeout_dur, collect_fut).await {
+                Ok(reports) => {
+                    reporter_finish.finish();
+                    // Normal completion — join handles for clean shutdown.
+                    for handle in handles {
+                        let _ = handle.await;
+                    }
+                    // Clean up Redis keys.
+                    {
+                        let mut f = crawl_frontier.lock().await;
+                        if let Err(e) = f.clear().await {
+                            tracing::warn!(error = %e, "failed to clear frontier after crawl");
+                        }
+                    }
+                    reports
+                }
+                Err(_elapsed) => {
+                    tracing::warn!(
+                        global_timeout_secs = global_secs,
+                        "global timeout elapsed; returning partial report"
+                    );
+                    reporter_finish.finish();
+                    // Abort all workers so their tx clones are dropped.
+                    for handle in handles {
+                        handle.abort();
+                    }
+                    // Drain whatever completed before the timeout.
+                    let mut reports = Vec::new();
+                    while let Ok(report) = rx.try_recv() {
+                        reports.push(report);
+                    }
+                    // Best-effort cleanup of Redis keys.
+                    {
+                        let mut f = crawl_frontier.lock().await;
+                        if let Err(e) = f.clear().await {
+                            tracing::warn!(error = %e, "failed to clear frontier after timeout");
+                        }
+                    }
+                    reports
+                }
+            }
+        } else {
+            // ── No-timeout path: existing run_crawl ──────────────────────
+            crate::crawler::run_crawl(
+                Arc::new(config.clone()),
+                Arc::clone(&fetcher),
+                frontier,
+                page_auditors,
+                site_auditors,
+                Arc::clone(&rate_limiter),
+                Arc::clone(&robots_cache),
+                reporter,
+            )
+            .await?
+        }
     };
 
     let site_score = score_site(&page_reports);
@@ -212,6 +280,7 @@ mod tests {
             user_agent: "test-agent".to_owned(),
             timeout_secs: 5,
             max_pages: None,
+            global_timeout_secs: None,
             respect_robots: false,
             quiet: true,
             no_color: true,

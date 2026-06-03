@@ -262,6 +262,7 @@ mod tests {
             user_agent: "test-agent".to_owned(),
             timeout_secs: 10,
             max_pages: None,
+            global_timeout_secs: None,
             respect_robots: false,
             quiet: false,
             no_color: true,

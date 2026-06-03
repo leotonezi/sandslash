@@ -38,6 +38,11 @@ pub struct Cli {
     #[arg(long)]
     pub max_pages: Option<usize>,
 
+    /// Wall-clock timeout (seconds) for the entire crawl.
+    /// When elapsed, a partial report is returned instead of an error.
+    #[arg(long)]
+    pub global_timeout: Option<u64>,
+
     /// Do not respect robots.txt.
     #[arg(long, default_value_t = false)]
     pub ignore_robots: bool,
@@ -77,6 +82,7 @@ impl Cli {
                 .unwrap_or_else(|| CrawlConfig::DEFAULT_UA.to_owned()),
             timeout_secs: self.timeout,
             max_pages: self.max_pages,
+            global_timeout_secs: self.global_timeout,
             respect_robots: !self.ignore_robots,
             quiet: self.quiet,
             no_color: self.no_color,

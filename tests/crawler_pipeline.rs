@@ -92,6 +92,7 @@ mod tests {
             user_agent: "seo-rs-test/0.1".to_owned(),
             timeout_secs: 10,
             max_pages: None,
+            global_timeout_secs: None,
             respect_robots: false,
             quiet: true,
             no_color: true,

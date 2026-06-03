@@ -625,7 +625,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** `tracing` output and `indicatif` fight over lines. Use `indicatif_log_bridge` or route tracing to a file under `--verbose`.
 - Verify: manual smoke test.
 
-### 4.4 Safety valves: `--timeout` and `--max-pages`
+### ✓ 4.4 Safety valves: `--timeout` and `--max-pages`
 - Wrap crawl in `tokio::time::timeout(Duration::from_secs(global_timeout), run_crawl(...))`. On timeout, return partial report.
 - `--max-pages`: `Arc<AtomicUsize>` counter, increment before enqueue.
 - **[RUST]** `AtomicUsize::fetch_add(1, Ordering::Relaxed)` — `Relaxed` is correct for a counter without ordering dependencies.
