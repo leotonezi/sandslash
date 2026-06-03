@@ -12,6 +12,9 @@ pub struct CrawlConfig {
     pub user_agent: String,
     pub timeout_secs: u64,
     pub max_pages: Option<usize>,
+    /// Wall-clock timeout (seconds) for the entire crawl.  When elapsed the
+    /// crawler is aborted and a partial `AuditReport` is returned.
+    pub global_timeout_secs: Option<u64>,
     pub respect_robots: bool,
     pub quiet: bool,
     pub no_color: bool,

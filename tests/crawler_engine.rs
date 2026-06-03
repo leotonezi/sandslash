@@ -34,6 +34,7 @@ fn make_config(root: Url, depth: u32, max_pages: Option<usize>) -> CrawlConfig {
         user_agent: "test-engine-agent".to_owned(),
         timeout_secs: 10,
         max_pages,
+        global_timeout_secs: None,
         respect_robots: false,
         quiet: true,
         no_color: true,
