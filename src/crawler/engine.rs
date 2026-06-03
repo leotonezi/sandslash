@@ -4,13 +4,14 @@
 //! `config.concurrency` async workers.  Each worker:
 //!
 //! 1. Dequeues a `(depth, url)` pair.
-//! 2. Fetches the page.
-//! 3. Runs all page-auditors **and** link discovery inside `spawn_blocking`
+//! 2. Checks robots.txt gating (if `config.respect_robots`).
+//! 3. Fetches the page.
+//! 4. Runs all page-auditors **and** link discovery inside `spawn_blocking`
 //!    (because `Dom` is `!Send`).
-//! 4. Runs site-auditors (async, outside `spawn_blocking`).
-//! 5. Scores the page and sends the `PageReport` over an unbounded channel.
-//! 6. Enqueues child URLs if `depth < config.depth` and `max_pages` not reached.
-//! 7. Calls `mark_done` on every exit path after a successful dequeue.
+//! 5. Runs site-auditors (async, outside `spawn_blocking`).
+//! 6. Scores the page and sends the `PageReport` over an unbounded channel.
+//! 7. Enqueues child URLs if `depth < config.depth` and `max_pages` not reached.
+//! 8. Calls `mark_done` on every exit path after a successful dequeue.
 
 use std::sync::{
     Arc,
@@ -24,13 +25,13 @@ use crate::{
     audit::{AuditContext, PageAuditor, SiteAuditor},
     config::CrawlConfig,
     error::Result,
-    fetcher::Fetcher,
+    fetcher::{Fetcher, HostRateLimiter},
     model::{PageData, PageReport},
     parser::{Dom, links::discover_links},
     score::score_page,
 };
 
-use super::Frontier;
+use super::{Frontier, RobotsCache};
 
 /// Run a bounded worker-pool crawl starting from `config.root`.
 ///
@@ -43,6 +44,8 @@ pub async fn run_crawl(
     frontier: Frontier,
     page_auditors: Arc<Vec<Box<dyn PageAuditor>>>,
     site_auditors: Arc<Vec<Box<dyn SiteAuditor>>>,
+    rate_limiter: Arc<HostRateLimiter>,
+    robots_cache: Arc<RobotsCache>,
 ) -> Result<Vec<PageReport>> {
     // ── 1. Seed frontier ─────────────────────────────────────────────────────
     let frontier = Arc::new(Mutex::new(frontier));
@@ -63,6 +66,8 @@ pub async fn run_crawl(
         let page_auditors = Arc::clone(&page_auditors);
         let site_auditors = Arc::clone(&site_auditors);
         let pages_fetched = Arc::clone(&pages_fetched);
+        let rate_limiter = Arc::clone(&rate_limiter);
+        let robots_cache = Arc::clone(&robots_cache);
         // Each worker holds its own tx clone; they are all dropped when the
         // worker finishes, which closes the channel once the last worker exits.
         let tx = tx.clone();
@@ -75,6 +80,8 @@ pub async fn run_crawl(
                 page_auditors,
                 site_auditors,
                 pages_fetched,
+                rate_limiter,
+                robots_cache,
                 tx,
             )
             .await;
@@ -108,6 +115,7 @@ pub async fn run_crawl(
 /// The worker never propagates errors to the caller — all errors are logged
 /// via `tracing::warn!` and skipped.  The worker exits when the frontier
 /// reports completion (`is_complete() == true`) while the queue is empty.
+#[allow(clippy::too_many_arguments)]
 async fn worker_loop(
     config: Arc<CrawlConfig>,
     fetcher: Arc<Fetcher>,
@@ -115,6 +123,8 @@ async fn worker_loop(
     page_auditors: Arc<Vec<Box<dyn PageAuditor>>>,
     site_auditors: Arc<Vec<Box<dyn SiteAuditor>>>,
     pages_fetched: Arc<AtomicUsize>,
+    rate_limiter: Arc<HostRateLimiter>,
+    robots_cache: Arc<RobotsCache>,
     tx: tokio::sync::mpsc::UnboundedSender<PageReport>,
 ) {
     loop {
@@ -165,6 +175,18 @@ async fn worker_loop(
                 continue;
             }
         };
+
+        // ── Robots gating (BEFORE max_pages increment and fetch) ─────────────
+        if config.respect_robots {
+            let allowed = robots_cache
+                .allowed(&url, &fetcher, &config.user_agent, &rate_limiter)
+                .await;
+            if !allowed {
+                tracing::debug!(url = %url, "robots.txt disallowed; skipping");
+                mark_done_warn(&frontier).await;
+                continue;
+            }
+        }
 
         // ── max_pages cap ────────────────────────────────────────────────────
         if let Some(max) = config.max_pages {

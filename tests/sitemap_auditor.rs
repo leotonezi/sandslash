@@ -8,6 +8,12 @@ use std::sync::Arc;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+fn make_fetcher(config: &CrawlConfig) -> Fetcher {
+    let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
+    let rl = Arc::new(HostRateLimiter::new(qps));
+    Fetcher::new(config, rl).expect("Fetcher::new must succeed in tests")
+}
+
 fn make_page(base_url: &str) -> PageData {
     PageData {
         url: base_url.parse().unwrap(),
@@ -34,12 +40,6 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         no_color: true,
         output_json: None,
     }
-}
-
-fn make_fetcher(config: &CrawlConfig) -> Fetcher {
-    let qps = NonZeroU32::new(1000).expect("invariant: 1000 != 0");
-    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
-    Fetcher::new(config, rate_limiter).unwrap()
 }
 
 const VALID_SITEMAP: &str = r#"<?xml version="1.0" encoding="UTF-8"?>

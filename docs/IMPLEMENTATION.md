@@ -578,7 +578,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - After completion: `frontier.clear()` or set EXPIRE on keys.
 - Verify: end-to-end test against 5-page wiremock site.
 
-### 3.8 Robots integration into crawl gating
+### ✓ 3.8 Robots integration into crawl gating
 - Before fetching any URL, consult cached robots.txt per host via `DashMap<String, RobotsRules>`.
 - If `respect_robots` and disallowed: skip URL.
 - Respect `Crawl-delay:` — feed back into rate limiter for that host.

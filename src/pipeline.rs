@@ -6,6 +6,7 @@ use url::Url;
 
 use crate::audit::AuditContext;
 use crate::config::CrawlConfig;
+use crate::crawler::RobotsCache;
 use crate::error::SeoError;
 use crate::fetcher::{Fetcher, HostRateLimiter};
 use crate::model::{AuditReport, Category, Finding, Headers, PageData, PageReport, Severity};
@@ -18,10 +19,30 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     let qps = NonZeroU32::new(config.rate_per_host)
         .unwrap_or_else(|| NonZeroU32::new(1).expect("invariant: 1 != 0"));
     let rate_limiter = Arc::new(HostRateLimiter::new(qps));
-    let fetcher = Arc::new(Fetcher::new(&config, rate_limiter)?);
+    let fetcher = Arc::new(Fetcher::new(&config, Arc::clone(&rate_limiter))?);
+    let robots_cache = Arc::new(RobotsCache::new());
 
     let page_reports: Vec<PageReport> = if config.depth == 0 {
         // ── Single-page path (no Redis dependency) ────────────────────────
+
+        // Robots gating for single-page path.
+        if config.respect_robots {
+            let allowed = robots_cache
+                .allowed(&config.root, &fetcher, &config.user_agent, &rate_limiter)
+                .await;
+            if !allowed {
+                tracing::debug!(url = %config.root, "robots.txt disallowed root URL; returning empty report");
+                let report = AuditReport {
+                    root: config.root.clone(),
+                    pages: vec![],
+                    site_score: 100,
+                    crawled_at: Utc::now().to_rfc3339(),
+                };
+                emit_report(&report, &config)?;
+                return Ok(report);
+            }
+        }
+
         let page_data = match fetcher.fetch(&config.root).await {
             Ok(pd) => pd,
             Err(SeoError::RedirectLoop { url, hops }) => {
@@ -73,6 +94,8 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
             frontier,
             page_auditors,
             site_auditors,
+            Arc::clone(&rate_limiter),
+            Arc::clone(&robots_cache),
         )
         .await?
     };
