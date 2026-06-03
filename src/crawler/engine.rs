@@ -28,6 +28,7 @@ use crate::{
     fetcher::{Fetcher, HostRateLimiter},
     model::{PageData, PageReport},
     parser::{Dom, links::discover_links},
+    report::ProgressReporter,
     score::score_page,
 };
 
@@ -38,6 +39,7 @@ use super::{Frontier, RobotsCache};
 /// # Errors
 /// Returns `SeoError` if seeding the frontier fails or the channel collapses
 /// unexpectedly.  Individual page fetch / audit errors are logged and skipped.
+#[allow(clippy::too_many_arguments)]
 pub async fn run_crawl(
     config: Arc<CrawlConfig>,
     fetcher: Arc<Fetcher>,
@@ -46,6 +48,7 @@ pub async fn run_crawl(
     site_auditors: Arc<Vec<Box<dyn SiteAuditor>>>,
     rate_limiter: Arc<HostRateLimiter>,
     robots_cache: Arc<RobotsCache>,
+    reporter: ProgressReporter,
 ) -> Result<Vec<PageReport>> {
     // ── 1. Seed frontier ─────────────────────────────────────────────────────
     let frontier = Arc::new(Mutex::new(frontier));
@@ -53,6 +56,8 @@ pub async fn run_crawl(
         let mut f = frontier.lock().await;
         f.enqueue(config.root.as_str(), 0).await?;
     }
+    // Seed the total with the root page we just enqueued.
+    reporter.update_total(1);
 
     // ── 2. Shared state ──────────────────────────────────────────────────────
     let pages_fetched: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
@@ -71,6 +76,7 @@ pub async fn run_crawl(
         // Each worker holds its own tx clone; they are all dropped when the
         // worker finishes, which closes the channel once the last worker exits.
         let tx = tx.clone();
+        let reporter = reporter.clone();
 
         tokio::spawn(async move {
             worker_loop(
@@ -83,6 +89,7 @@ pub async fn run_crawl(
                 rate_limiter,
                 robots_cache,
                 tx,
+                reporter,
             )
             .await;
         });
@@ -99,7 +106,10 @@ pub async fn run_crawl(
         reports.push(report);
     }
 
-    // ── 6. Clean up Redis keys ───────────────────────────────────────────────
+    // ── 6. Finish progress bar ───────────────────────────────────────────────
+    reporter.finish();
+
+    // ── 7. Clean up Redis keys ───────────────────────────────────────────────
     {
         let mut f = frontier.lock().await;
         if let Err(e) = f.clear().await {
@@ -126,6 +136,7 @@ async fn worker_loop(
     rate_limiter: Arc<HostRateLimiter>,
     robots_cache: Arc<RobotsCache>,
     tx: tokio::sync::mpsc::UnboundedSender<PageReport>,
+    reporter: ProgressReporter,
 ) {
     loop {
         // ── Dequeue ──────────────────────────────────────────────────────────
@@ -259,8 +270,13 @@ async fn worker_loop(
         let report = score_page(url.clone(), findings);
         // Ignore send errors — receiver may have dropped after a panic.
         let _ = tx.send(report);
+        // One page report delivered — advance the progress bar.
+        reporter.inc_done();
 
         // ── Enqueue children ─────────────────────────────────────────────────
+        // Count discovered children for the total, regardless of whether they
+        // end up being enqueued (already-visited URLs are filtered by Redis).
+        let child_count = child_urls.len();
         if depth < config.depth {
             let next_depth = depth + 1;
             for child in child_urls {
@@ -273,6 +289,9 @@ async fn worker_loop(
                 }
             }
         }
+        // Bump the total by the number of discovered children (outside the
+        // depth check so it's always called after children are counted).
+        reporter.update_total(child_count);
 
         // ── Mark done ────────────────────────────────────────────────────────
         mark_done_warn(&frontier).await;
