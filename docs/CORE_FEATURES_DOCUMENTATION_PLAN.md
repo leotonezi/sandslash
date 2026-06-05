@@ -12,7 +12,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 
 | # | Topic | Doc | Branch | Status |
 |---|-------|-----|--------|--------|
-| 1 | Ownership & borrowing | `docs/rust/01-ownership-borrowing.md` | `chore/docs/ownership-borrowing` | [ ] |
+| 1 | Ownership & borrowing | `docs/rust/01-ownership-borrowing.md` | `chore/docs/ownership-borrowing` | [x] |
 | 2 | `Send` + `Sync` | `docs/rust/02-send-sync.md` | `chore/docs/send-sync` | [x] |
 | 3 | Trait objects | `docs/rust/03-trait-objects.md` | `chore/docs/trait-objects` | [x] |
 | 4 | `async_trait` | `docs/rust/04-async-trait.md` | `chore/docs/async-trait` | [ ] |
