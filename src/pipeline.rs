@@ -83,7 +83,16 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
             .as_deref()
             .ok_or_else(|| SeoError::Config("--redis-url is required when depth > 0".into()))?;
 
-        let job_id = format!("seo-rs-{}", Utc::now().timestamp_millis());
+        // PID + millis + per-process sequence number → unique across concurrent
+        // test runs even when two pipelines start within the same millisecond.
+        static JOB_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let seq = JOB_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let job_id = format!(
+            "seo-rs-{}-{}-{}",
+            std::process::id(),
+            Utc::now().timestamp_millis(),
+            seq,
+        );
         let frontier = crate::crawler::Frontier::new(redis_url, job_id).await?;
 
         let page_auditors = Arc::new(crate::audit::page_auditors());
