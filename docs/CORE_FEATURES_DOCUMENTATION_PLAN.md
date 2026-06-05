@@ -21,7 +21,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 | 7 | Channels (`mpsc`) & drop-sender pattern | `docs/rust/07-channels-mpsc.md` | `chore/docs/channels-mpsc` | [x] |
 | 8 | `Arc` vs `Rc` | `docs/rust/08-arc-vs-rc.md` | `chore/docs/arc-vs-rc` | [ ] |
 | 9 | Mutex/DashMap guards across `.await` | `docs/rust/09-guards-across-await.md` | `chore/docs/guards-across-await` | [x] |
-| 10 | `spawn_blocking` | `docs/rust/10-spawn-blocking.md` | `chore/docs/spawn-blocking` | [ ] |
+| 10 | `spawn_blocking` | `docs/rust/10-spawn-blocking.md` | `chore/docs/spawn-blocking` | [x] |
 | 11 | `Semaphore` for bounded concurrency | `docs/rust/11-semaphore.md` | `chore/docs/semaphore` | [x] |
 | 12 | Atomics & memory ordering | `docs/rust/12-atomics.md` | `chore/docs/atomics` | [x] |
 | 13 | `Cow<str>` | `docs/rust/13-cow-str.md` | `chore/docs/cow-str` | [x] |
