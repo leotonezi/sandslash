@@ -588,7 +588,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 
 ---
 
-## Phase 4 — Polish (target: 3–4 days)
+## ✓ Phase 4 — Polish (DONE)
 
 ### ✓ 4.1 Broken-link auditor at scale (`src/audit/links.rs`)
 - Site auditor. Collect all `<a href>` URLs across all pages. HEAD each unique URL; 405/error → GET fallback.
@@ -652,10 +652,10 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
   8. 429 backoff + retry.
 - **[RUST]** `#[tokio::test]`, `include_str!` for fixtures, sharing `MockServer` across multiple `Mock` registrations.
 
-### 4.8 README
+### ✓ 4.8 README
 - Install, quick start, all flags, sample output, scoring methodology.
 
-### 4.9 CI (`.github/workflows/ci.yml`)
+### ✓ 4.9 CI (`.github/workflows/ci.yml`)
 - `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo build --release`.
 - Add `services: redis` block for Redis-dependent tests.
 
