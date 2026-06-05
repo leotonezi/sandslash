@@ -1,5 +1,6 @@
 pub mod headings;
 pub mod https;
+pub mod js_rendered;
 pub mod links;
 pub mod metadata;
 
@@ -48,6 +49,7 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
         Box::new(opengraph::OpengraphAuditor),
         Box::new(images::ImagesAuditor),
         Box::new(redirects::RedirectsAuditor),
+        Box::new(js_rendered::JsRenderedAuditor),
     ]
 }
 
