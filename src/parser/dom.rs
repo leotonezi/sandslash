@@ -1,4 +1,4 @@
-use scraper::{Html, Selector};
+use scraper::{Html, Selector, node::Node};
 use std::sync::LazyLock;
 
 static SEL_TITLE: LazyLock<Selector> =
@@ -32,6 +32,13 @@ static SEL_EMBED_SRC: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("embed[src]").expect("invariant: valid CSS selector"));
 static SEL_OBJECT_DATA: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("object[data]").expect("invariant: valid CSS selector"));
+
+/// Content-bearing semantic tags used for JS-rendered detection.
+/// Covers: p, article, section, main, li, h1–h6.
+static SEL_CONTENT_TAGS: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("p, article, section, main, li, h1, h2, h3, h4, h5, h6")
+        .expect("invariant: valid CSS selector")
+});
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -167,6 +174,46 @@ impl Dom {
         );
 
         urls
+    }
+
+    /// Byte length of visible text in the document.
+    ///
+    /// Excludes text inside `<script>`, `<style>`, and `<noscript>` elements,
+    /// as well as HTML comments. Used by JS-rendered detection.
+    pub fn visible_text_len(&self) -> usize {
+        // Names of elements whose text content is not user-visible.
+        const EXCLUDED: &[&str] = &["script", "style", "noscript"];
+
+        let mut total = 0usize;
+        for node_ref in self.html.tree.nodes() {
+            match node_ref.value() {
+                Node::Text(text) => {
+                    // Walk up the ancestor chain; skip if any ancestor is excluded.
+                    let excluded = node_ref.ancestors().any(|ancestor| {
+                        if let Node::Element(el) = ancestor.value() {
+                            EXCLUDED.contains(&el.name())
+                        } else {
+                            false
+                        }
+                    });
+                    if !excluded {
+                        total += text.trim().len();
+                    }
+                }
+                // Comments contribute no visible text — simply skip.
+                Node::Comment(_) => {}
+                _ => {}
+            }
+        }
+        total
+    }
+
+    /// Number of semantic content tags present in the document.
+    ///
+    /// Counts: `p`, `article`, `section`, `main`, `li`, `h1`–`h6`.
+    /// Used by JS-rendered detection.
+    pub fn content_tag_count(&self) -> usize {
+        self.html.select(&SEL_CONTENT_TAGS).count()
     }
 }
 

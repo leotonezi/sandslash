@@ -6,6 +6,9 @@ use sandslash::pipeline;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
+    // Load .env if present; silently ignore if absent.
+    dotenvy::dotenv().ok();
+
     let cli = cli::Cli::parse();
 
     // When --verbose is set: show full tracing output, suppress progress bar.

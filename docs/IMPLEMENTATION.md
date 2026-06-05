@@ -635,7 +635,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - Extend `sitemap.rs` to sample sitemap URLs (HEAD with semaphore-bounded concurrency), flag non-200s.
 - Gate behind `--validate-sitemap` flag (default off).
 
-### 4.6 JS-rendered page detection
+### ✓ 4.6 JS-rendered page detection
 - Heuristic: `visible_text_bytes / total_html_bytes < 0.05` AND very few content tags → Warning under `Category::Structure`: "page appears to require JS rendering — results may be incomplete."
 - Verify: fixture with mostly empty `<div id="root"></div>` triggers it.
 
