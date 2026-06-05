@@ -639,7 +639,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - Heuristic: `visible_text_bytes / total_html_bytes < 0.05` AND very few content tags → Warning under `Category::Structure`: "page appears to require JS rendering — results may be incomplete."
 - Verify: fixture with mostly empty `<div id="root"></div>` triggers it.
 
-### 4.7 Wiremock integration test suite (`tests/integration.rs`)
+### ✓ 4.7 Wiremock integration test suite (`tests/integration.rs`)
 - Requires refactoring to `lib.rs` exposing `pub async fn run(config) -> Result<AuditReport>` (tests compile as separate crates — only `pub` API accessible).
 - Cover:
   1. Single-page audit — all auditors firing.
