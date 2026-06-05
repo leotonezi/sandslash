@@ -182,7 +182,7 @@ let counter: Arc<usize> = Arc::new(0);
 *counter += 1;  // error: cannot assign through an immutable reference
 ```
 
-`Arc<T>` provides shared *immutable* access. For shared mutable state use `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, or `Arc<AtomicUsize>` (for primitive counters). This project uses `Arc<AtomicUsize>` for `pages_fetched` (`engine.rs:71`) and `Arc<Mutex<Frontier>>` for the crawl frontier (`engine.rs:62`).
+`Arc<T>` provides shared *immutable* access. For shared mutable state use `Arc<Mutex<T>>`, `Arc<RwLock<T>>`, or `Arc<AtomicUsize>` (for primitive counters). This project uses `Arc<AtomicUsize>` for `pages_fetched` (engine.rs:71) and `Arc<Mutex<Frontier>>` for the crawl frontier (engine.rs:62).
 
 **Creating reference cycles**
 
