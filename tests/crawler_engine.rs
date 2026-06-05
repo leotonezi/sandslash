@@ -11,6 +11,7 @@ use sandslash::audit::{page_auditors, site_auditors};
 use sandslash::config::CrawlConfig;
 use sandslash::crawler::{Frontier, RobotsCache, run_crawl};
 use sandslash::fetcher::{Fetcher, HostRateLimiter};
+use sandslash::report::ProgressReporter;
 use url::Url;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -33,10 +34,14 @@ fn make_config(root: Url, depth: u32, max_pages: Option<usize>) -> CrawlConfig {
         user_agent: "test-engine-agent".to_owned(),
         timeout_secs: 10,
         max_pages,
+        global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: true,
         no_color: true,
+        verbose: false,
         output_json: None,
+        check_external_links: false,
     }
 }
 
@@ -138,6 +143,7 @@ async fn crawls_3_page_site_returns_3_reports() {
         sa,
         rate_limiter,
         robots_cache,
+        ProgressReporter::hidden(),
     )
     .await
     .expect("run_crawl must succeed");
@@ -221,6 +227,7 @@ async fn max_pages_cap_respected() {
         sa,
         rate_limiter,
         robots_cache,
+        ProgressReporter::hidden(),
     )
     .await
     .expect("run_crawl must succeed");
@@ -304,6 +311,7 @@ async fn fetch_error_skipped_crawl_continues() {
         sa,
         rate_limiter,
         robots_cache,
+        ProgressReporter::hidden(),
     )
     .await
     .expect("run_crawl must not fail even when pages return 500");

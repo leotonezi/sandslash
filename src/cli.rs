@@ -38,9 +38,18 @@ pub struct Cli {
     #[arg(long)]
     pub max_pages: Option<usize>,
 
+    /// Wall-clock timeout (seconds) for the entire crawl.
+    /// When elapsed, a partial report is returned instead of an error.
+    #[arg(long)]
+    pub global_timeout: Option<u64>,
+
     /// Do not respect robots.txt.
     #[arg(long, default_value_t = false)]
     pub ignore_robots: bool,
+
+    /// HEAD-probe every <loc> URL in the sitemap to find broken links.
+    #[arg(long, default_value_t = false)]
+    pub validate_sitemap: bool,
 
     /// Print only the final site score; JSON output is suppressed unless --output is set.
     #[arg(short, long)]
@@ -53,6 +62,14 @@ pub struct Cli {
     /// Write JSON report to PATH. When set, the terminal report goes to stdout; otherwise JSON goes to stdout and the terminal report goes to stderr.
     #[arg(short = 'o', long)]
     pub output: Option<PathBuf>,
+
+    /// Also check external (off-host) links for broken URLs.
+    #[arg(long, default_value_t = false)]
+    pub check_external_links: bool,
+
+    /// Enable verbose tracing output (disables the progress bar).
+    #[arg(long, default_value_t = false)]
+    pub verbose: bool,
 }
 
 impl Cli {
@@ -69,10 +86,14 @@ impl Cli {
                 .unwrap_or_else(|| CrawlConfig::DEFAULT_UA.to_owned()),
             timeout_secs: self.timeout,
             max_pages: self.max_pages,
+            global_timeout_secs: self.global_timeout,
             respect_robots: !self.ignore_robots,
+            validate_sitemap: self.validate_sitemap,
             quiet: self.quiet,
             no_color: self.no_color,
+            verbose: self.verbose,
             output_json: self.output,
+            check_external_links: self.check_external_links,
         })
     }
 }

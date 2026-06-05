@@ -1,4 +1,6 @@
 use async_trait::async_trait;
+use futures::StreamExt;
+use futures::stream;
 use quick_xml::Reader;
 use quick_xml::errors::IllFormedError;
 use quick_xml::events::Event;
@@ -8,6 +10,9 @@ use crate::audit::{AuditContext, SiteAuditor, finding};
 use crate::model::{Category, Finding, PageData, Severity};
 
 pub struct SitemapAuditor;
+
+const MAX_SAMPLED_URLS: usize = 50;
+const MAX_CONCURRENT_PROBES: usize = 32;
 
 /// Scan the robots.txt body for the first `Sitemap:` directive and return the
 /// parsed URL.  The directive is case-insensitive per robots.txt convention.
@@ -67,6 +72,60 @@ fn validate_sitemap_xml(bytes: &[u8]) -> Result<(), quick_xml::Error> {
     }
 }
 
+/// Extract `<loc>` URL text from a sitemap XML document, up to `cap` entries.
+///
+/// If the root element is `<sitemapindex>` (a sitemap index file), returns an
+/// empty vec — these are silently skipped per spec.  Malformed URLs are skipped.
+pub(crate) fn extract_loc_urls(xml_bytes: &[u8], cap: usize) -> Vec<Url> {
+    let mut reader = Reader::from_reader(xml_bytes);
+    reader.config_mut().trim_text(true);
+
+    let mut buf = Vec::new();
+    let mut urls: Vec<Url> = Vec::new();
+
+    // State machine: track whether we're inside a <loc> element.
+    let mut inside_loc = false;
+    // Once we know the root element, record whether it's a sitemapindex.
+    let mut is_sitemapindex: Option<bool> = None;
+
+    loop {
+        buf.clear();
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Eof) => break,
+            Ok(Event::Start(ref e)) => {
+                let local = e.local_name();
+                let name = std::str::from_utf8(local.as_ref()).unwrap_or("");
+                // Detect root element on first Start event.
+                if is_sitemapindex.is_none() {
+                    is_sitemapindex = Some(name.eq_ignore_ascii_case("sitemapindex"));
+                }
+                if let Some(true) = is_sitemapindex {
+                    // Sitemapindex — nothing to do; we'll return empty at the end.
+                    break;
+                }
+                if name.eq_ignore_ascii_case("loc") {
+                    inside_loc = true;
+                }
+            }
+            Ok(Event::End(_)) => {
+                inside_loc = false;
+            }
+            Ok(Event::Text(ref e)) if inside_loc && urls.len() < cap => {
+                if let Ok(raw) = e.unescape() {
+                    let text = raw.into_owned();
+                    if let Ok(u) = Url::parse(text.trim()) {
+                        urls.push(u);
+                    }
+                }
+                inside_loc = false;
+            }
+            _ => {}
+        }
+    }
+
+    urls
+}
+
 #[async_trait]
 impl SiteAuditor for SitemapAuditor {
     fn id(&self) -> &'static str {
@@ -77,7 +136,7 @@ impl SiteAuditor for SitemapAuditor {
         Category::Crawlability
     }
 
-    async fn audit(&self, page: &PageData, ctx: &AuditContext<'_>) -> Vec<Finding> {
+    async fn audit(&self, page: &PageData, ctx: &AuditContext) -> Vec<Finding> {
         let missing_finding = || {
             finding(
                 "sitemap.missing",
@@ -115,17 +174,69 @@ impl SiteAuditor for SitemapAuditor {
             return vec![missing_finding()];
         }
 
+        let bytes = sitemap_page.html.as_bytes();
+
         // --- Step 3: validate XML ---
-        match validate_sitemap_xml(sitemap_page.html.as_bytes()) {
+        let mut findings = match validate_sitemap_xml(bytes) {
             Ok(()) => vec![],
-            Err(_) => vec![finding(
-                "sitemap.malformed",
-                Category::Crawlability,
-                Severity::Critical,
-                20,
-                "sitemap.xml is present but could not be parsed as valid XML",
-            )],
+            Err(_) => {
+                return vec![finding(
+                    "sitemap.malformed",
+                    Category::Crawlability,
+                    Severity::Critical,
+                    20,
+                    "sitemap.xml is present but could not be parsed as valid XML",
+                )];
+            }
+        };
+
+        // --- Step 4: optional URL validation pass ---
+        if ctx.config.validate_sitemap {
+            let loc_urls = extract_loc_urls(bytes, MAX_SAMPLED_URLS);
+
+            let probe_findings: Vec<Finding> = stream::iter(loc_urls)
+                .map(|url| async move {
+                    // Try HEAD first; fall back to GET on 405 or transport error.
+                    let status = match ctx.fetcher.head(&url).await {
+                        Ok(405) => {
+                            // Method Not Allowed — fall back to GET.
+                            match ctx.fetcher.fetch(&url).await {
+                                Ok(p) => p.status,
+                                Err(_) => 0,
+                            }
+                        }
+                        Ok(s) => s,
+                        Err(_) => {
+                            // Transport error on HEAD — fall back to GET.
+                            match ctx.fetcher.fetch(&url).await {
+                                Ok(p) => p.status,
+                                Err(_) => 0,
+                            }
+                        }
+                    };
+
+                    // 2xx and 3xx are fine (redirects are acceptable for sitemap URLs).
+                    if (200..400).contains(&status) {
+                        None
+                    } else {
+                        Some(finding(
+                            "sitemap.url-unreachable",
+                            Category::Crawlability,
+                            Severity::Warning,
+                            5,
+                            format!("Sitemap URL {url} unreachable (status {status})"),
+                        ))
+                    }
+                })
+                .buffer_unordered(MAX_CONCURRENT_PROBES)
+                .filter_map(|opt| async move { opt })
+                .collect()
+                .await;
+
+            findings.extend(probe_findings);
         }
+
+        findings
     }
 }
 
@@ -231,5 +342,48 @@ mod tests {
     fn empty_bytes_returns_ok() {
         // Empty input is technically well-formed (just EOF immediately).
         assert!(validate_sitemap_xml(b"").is_ok());
+    }
+
+    // --- extract_loc_urls ---
+
+    #[test]
+    fn extract_locs_from_valid_urlset() {
+        let xml = include_bytes!("../../tests/fixtures/sitemap_with_urls.xml");
+        let urls = extract_loc_urls(xml, 50);
+        // fixture has 2 valid URLs + 1 malformed "not a url" — expect 2
+        assert_eq!(urls.len(), 2);
+        assert_eq!(urls[0].as_str(), "http://placeholder/ok");
+        assert_eq!(urls[1].as_str(), "http://placeholder/broken");
+    }
+
+    #[test]
+    fn extraction_respects_sample_cap() {
+        // Build XML with 60 <loc> entries.
+        let mut xml = String::from(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#,
+        );
+        for i in 0..60 {
+            xml.push_str(&format!(
+                "\n  <url><loc>https://example.com/page{i}</loc></url>"
+            ));
+        }
+        xml.push_str("\n</urlset>");
+        let urls = extract_loc_urls(xml.as_bytes(), 50);
+        assert_eq!(urls.len(), 50, "cap of 50 must be respected");
+    }
+
+    #[test]
+    fn sitemapindex_returns_empty() {
+        let xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://example.com/sitemap1.xml</loc></sitemap>
+  <sitemap><loc>https://example.com/sitemap2.xml</loc></sitemap>
+</sitemapindex>"#;
+        let urls = extract_loc_urls(xml, 50);
+        assert!(
+            urls.is_empty(),
+            "sitemapindex should return empty vec, got {urls:?}"
+        );
     }
 }

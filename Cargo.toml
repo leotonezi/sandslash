@@ -22,12 +22,15 @@ encoding_rs = "0.8"
 owo-colors = "4"
 comfy-table = "7"
 indicatif = "0.17"
+indicatif-log-bridge = "0.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 dashmap = "6"
 chrono = { version = "0.4", features = ["serde"] }
 quick-xml = "0.37"
 nonzero_ext = "0.3"
+futures = "0.3"
+dotenvy = "0.15"
 
 [dev-dependencies]
 wiremock = "0.6"

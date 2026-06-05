@@ -150,7 +150,7 @@ impl SiteAuditor for RobotsAuditor {
         Category::Crawlability
     }
 
-    async fn audit(&self, page: &PageData, ctx: &AuditContext<'_>) -> Vec<Finding> {
+    async fn audit(&self, page: &PageData, ctx: &AuditContext) -> Vec<Finding> {
         let robots_missing = || {
             finding(
                 "robots.missing",

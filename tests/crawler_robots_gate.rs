@@ -26,10 +26,14 @@ mod tests {
             user_agent: "Sandslash/0.4 (+https://github.com/leotonezi/sandslash)".to_owned(),
             timeout_secs: 5,
             max_pages: None,
+            global_timeout_secs: None,
             respect_robots,
+            validate_sitemap: false,
             quiet: true,
             no_color: true,
+            verbose: false,
             output_json: None,
+            check_external_links: false,
         }
     }
 

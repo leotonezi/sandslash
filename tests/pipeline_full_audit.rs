@@ -54,10 +54,14 @@ async fn pipeline_runs_all_auditors() {
         user_agent: "test-agent".to_owned(),
         timeout_secs: 10,
         max_pages: None,
+        global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: false,
         no_color: true,
+        verbose: false,
         output_json: Some(json_path.clone()),
+        check_external_links: false,
     };
 
     let report = pipeline::run(config).await.expect("pipeline must succeed");

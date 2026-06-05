@@ -459,7 +459,7 @@ Goal: all single-page auditors, polished scoring, colored terminal output, robot
 
 ---
 
-## Phase 3 — Crawler: Redis frontier, worker pool, rate limiter (target: 4–5 days)
+## ✓ Phase 3 — Crawler: Redis frontier, worker pool, rate limiter (DONE)
 
 Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into one report.
 
@@ -588,9 +588,9 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 
 ---
 
-## Phase 4 — Polish (target: 3–4 days)
+## ✓ Phase 4 — Polish (DONE)
 
-### 4.1 Broken-link auditor at scale (`src/audit/links.rs`)
+### ✓ 4.1 Broken-link auditor at scale (`src/audit/links.rs`)
 - Site auditor. Collect all `<a href>` URLs across all pages. HEAD each unique URL; 405/error → GET fallback.
 - Use `Semaphore` for bounded concurrency (e.g. 32 in-flight):
   ```rust
@@ -610,7 +610,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[GOTCHA]** HEAD-hostile servers return 405 or close connection — always have GET fallback.
 - Verify: wiremock with one 200, one 404, one 500 link — assert correct findings.
 
-### 4.2 Encoding robustness (`src/fetcher/client.rs`)
+### ✓ 4.2 Encoding robustness (`src/fetcher/client.rs`)
 - Replace `.text().await` with:
   1. `let bytes = resp.bytes().await?;`
   2. Read charset from `Content-Type` header.
@@ -619,27 +619,27 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[RUST]** `Cow<str>` — `encoding_rs` returns `(Cow<str>, &'static Encoding, bool)`.
 - Verify: Shift_JIS and Windows-1252 fixtures decode correctly.
 
-### 4.3 Progress bar (`src/report/terminal.rs`)
+### ✓ 4.3 Progress bar (`src/report/terminal.rs`)
 - `indicatif::ProgressBar` — update total dynamically as URLs are discovered. Wire via channel from engine.
 - Hide under `--quiet` or non-TTY.
 - **[GOTCHA]** `tracing` output and `indicatif` fight over lines. Use `indicatif_log_bridge` or route tracing to a file under `--verbose`.
 - Verify: manual smoke test.
 
-### 4.4 Safety valves: `--timeout` and `--max-pages`
+### ✓ 4.4 Safety valves: `--timeout` and `--max-pages`
 - Wrap crawl in `tokio::time::timeout(Duration::from_secs(global_timeout), run_crawl(...))`. On timeout, return partial report.
 - `--max-pages`: `Arc<AtomicUsize>` counter, increment before enqueue.
 - **[RUST]** `AtomicUsize::fetch_add(1, Ordering::Relaxed)` — `Relaxed` is correct for a counter without ordering dependencies.
 - Verify: `--max-pages 2` against 10-page site → exactly 2 pages in report.
 
-### 4.5 Sitemap URL validation pass
+### ✓ 4.5 Sitemap URL validation pass
 - Extend `sitemap.rs` to sample sitemap URLs (HEAD with semaphore-bounded concurrency), flag non-200s.
 - Gate behind `--validate-sitemap` flag (default off).
 
-### 4.6 JS-rendered page detection
+### ✓ 4.6 JS-rendered page detection
 - Heuristic: `visible_text_bytes / total_html_bytes < 0.05` AND very few content tags → Warning under `Category::Structure`: "page appears to require JS rendering — results may be incomplete."
 - Verify: fixture with mostly empty `<div id="root"></div>` triggers it.
 
-### 4.7 Wiremock integration test suite (`tests/integration.rs`)
+### ✓ 4.7 Wiremock integration test suite (`tests/integration.rs`)
 - Requires refactoring to `lib.rs` exposing `pub async fn run(config) -> Result<AuditReport>` (tests compile as separate crates — only `pub` API accessible).
 - Cover:
   1. Single-page audit — all auditors firing.
@@ -652,10 +652,10 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
   8. 429 backoff + retry.
 - **[RUST]** `#[tokio::test]`, `include_str!` for fixtures, sharing `MockServer` across multiple `Mock` registrations.
 
-### 4.8 README
+### ✓ 4.8 README
 - Install, quick start, all flags, sample output, scoring methodology.
 
-### 4.9 CI (`.github/workflows/ci.yml`)
+### ✓ 4.9 CI (`.github/workflows/ci.yml`)
 - `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo build --release`.
 - Add `services: redis` block for Redis-dependent tests.
 

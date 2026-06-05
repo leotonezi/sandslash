@@ -35,10 +35,14 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         user_agent: "test-agent".to_owned(),
         timeout_secs: 10,
         max_pages: None,
+        global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: false,
         no_color: true,
+        verbose: false,
         output_json: None,
+        check_external_links: false,
     }
 }
 
@@ -56,8 +60,8 @@ async fn robots_404_emits_missing_warning() {
     let config = make_config(&server);
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: std::sync::Arc::new(config.clone()),
+        fetcher: std::sync::Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 
@@ -84,8 +88,8 @@ async fn robots_disallow_all_emits_critical() {
     let config = make_config(&server);
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: std::sync::Arc::new(config.clone()),
+        fetcher: std::sync::Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 
@@ -126,8 +130,8 @@ async fn robots_no_sitemap_emits_info() {
     let config = make_config(&server);
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: std::sync::Arc::new(config.clone()),
+        fetcher: std::sync::Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 
@@ -154,8 +158,8 @@ async fn robots_clean_emits_no_findings() {
     let config = make_config(&server);
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: std::sync::Arc::new(config.clone()),
+        fetcher: std::sync::Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 
