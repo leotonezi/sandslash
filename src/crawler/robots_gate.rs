@@ -128,10 +128,11 @@ async fn fetch_and_parse(
     fetcher: &Fetcher,
     rate_limiter: &HostRateLimiter,
 ) -> Arc<CachedEntry> {
-    // Build the robots.txt URL using the scheme from the original URL.
-    let scheme = original_url.scheme();
-    let robots_url_str = format!("{scheme}://{host}/robots.txt");
-    let robots_url = match Url::parse(&robots_url_str) {
+    // Build the robots.txt URL preserving scheme, host, and port from the
+    // original URL. Using join("/robots.txt") avoids dropping non-standard
+    // ports (e.g. dev servers, test mocks) that format!("{scheme}://{host}")
+    // would silently lose.
+    let robots_url = match original_url.join("/robots.txt") {
         Ok(u) => u,
         Err(e) => {
             tracing::info!(host = %host, error = %e, "robots.txt URL construction failed; treating as allow-all");
