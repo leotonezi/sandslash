@@ -108,6 +108,26 @@ impl Fetcher {
         })
     }
 
+    /// Issue a HEAD request and return the HTTP status code.
+    /// No redirect following, no retry — this is a lightweight probe.
+    /// Returns `Err` on transport failure; callers decide how to handle it.
+    pub async fn head(&self, url: &Url) -> Result<u16> {
+        let host = url
+            .host_str()
+            .ok_or(SeoError::Url(url::ParseError::EmptyHost))?;
+        self.rate_limiter.acquire(host).await;
+        let resp = self
+            .client
+            .head(url.clone())
+            .send()
+            .await
+            .map_err(|e| SeoError::Fetch {
+                url: url.to_string(),
+                source: e,
+            })?;
+        Ok(resp.status().as_u16())
+    }
+
     pub async fn fetch(&self, url: &Url) -> Result<PageData> {
         let mut current = url.clone();
         let mut chain: Vec<Url> = Vec::new();
@@ -214,25 +234,6 @@ impl Fetcher {
             });
         }
     }
-
-    /// Issue a HEAD request to `url` and return the HTTP status code.
-    ///
-    /// Rate-limiting is applied before the request, same as [`fetch`].
-    /// Does not consume the response body.
-    pub async fn head(&self, url: &Url) -> Result<u16> {
-        let host = url.host_str().unwrap_or("");
-        self.rate_limiter.acquire(host).await;
-        let resp = self
-            .client
-            .head(url.as_str())
-            .send()
-            .await
-            .map_err(|e| SeoError::Fetch {
-                url: url.to_string(),
-                source: e,
-            })?;
-        Ok(resp.status().as_u16())
-    }
 }
 
 fn extract_headers(map: &HeaderMap) -> Headers {
@@ -264,6 +265,7 @@ mod tests {
             max_pages: None,
             global_timeout_secs: None,
             respect_robots: false,
+            validate_sitemap: false,
             quiet: false,
             no_color: true,
             verbose: false,

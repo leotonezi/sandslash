@@ -36,6 +36,7 @@ fn make_config(root: Url, depth: u32, max_pages: Option<usize>) -> CrawlConfig {
         max_pages,
         global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: true,
         no_color: true,
         verbose: false,

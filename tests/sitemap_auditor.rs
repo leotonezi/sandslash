@@ -37,6 +37,7 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         max_pages: None,
         global_timeout_secs: None,
         respect_robots: false,
+        validate_sitemap: false,
         quiet: false,
         no_color: true,
         verbose: false,
@@ -193,6 +194,130 @@ async fn truncated_sitemap_emits_critical() {
     assert_eq!(findings[0].check_id, "sitemap.malformed");
     assert_eq!(findings[0].severity, Severity::Critical);
     assert_eq!(findings[0].penalty, 20);
+}
+
+/// validate_sitemap=true: one HEAD 200, one HEAD 404 → exactly one finding.
+#[tokio::test]
+async fn validate_sitemap_flags_broken_url() {
+    let server = MockServer::start().await;
+
+    // robots.txt → 404 so auditor uses /sitemap.xml
+    Mock::given(method("GET"))
+        .and(path("/robots.txt"))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(&server)
+        .await;
+
+    // Build a sitemap whose <loc>s point to /ok and /broken on the mock server.
+    let sitemap_body = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{base}/ok</loc></url>
+  <url><loc>{base}/broken</loc></url>
+</urlset>"#,
+        base = server.uri()
+    );
+
+    Mock::given(method("GET"))
+        .and(path("/sitemap.xml"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(sitemap_body))
+        .mount(&server)
+        .await;
+
+    // /ok → HEAD 200
+    Mock::given(method("HEAD"))
+        .and(path("/ok"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server)
+        .await;
+
+    // /broken → HEAD 404
+    Mock::given(method("HEAD"))
+        .and(path("/broken"))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(&server)
+        .await;
+
+    let mut config = make_config(&server);
+    config.validate_sitemap = true;
+    let fetcher = make_fetcher(&config);
+    let ctx = AuditContext {
+        config: Arc::new(config),
+        fetcher: Arc::new(fetcher),
+    };
+    let page = make_page(&format!("{}/", server.uri()));
+
+    let findings = SitemapAuditor.audit(&page, &ctx).await;
+
+    let unreachable: Vec<_> = findings
+        .iter()
+        .filter(|f| f.check_id == "sitemap.url-unreachable")
+        .collect();
+    assert_eq!(
+        unreachable.len(),
+        1,
+        "expected exactly 1 sitemap.url-unreachable finding, got: {findings:?}"
+    );
+    assert_eq!(unreachable[0].severity, Severity::Warning);
+    assert_eq!(unreachable[0].penalty, 5);
+    assert!(
+        unreachable[0].message.contains("/broken"),
+        "finding message should mention the broken URL"
+    );
+}
+
+/// validate_sitemap=false → zero findings and zero HEAD requests issued.
+#[tokio::test]
+async fn validate_sitemap_disabled_emits_no_probe_findings() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/robots.txt"))
+        .respond_with(ResponseTemplate::new(404))
+        .mount(&server)
+        .await;
+
+    let sitemap_body = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{base}/ok</loc></url>
+  <url><loc>{base}/broken</loc></url>
+</urlset>"#,
+        base = server.uri()
+    );
+
+    Mock::given(method("GET"))
+        .and(path("/sitemap.xml"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(sitemap_body))
+        .mount(&server)
+        .await;
+
+    // validate_sitemap is false (default from make_config)
+    let config = make_config(&server);
+    let fetcher = make_fetcher(&config);
+    let ctx = AuditContext {
+        config: Arc::new(config),
+        fetcher: Arc::new(fetcher),
+    };
+    let page = make_page(&format!("{}/", server.uri()));
+
+    let findings = SitemapAuditor.audit(&page, &ctx).await;
+
+    assert!(
+        findings.is_empty(),
+        "expected 0 findings when validate_sitemap is false, got: {findings:?}"
+    );
+
+    // Verify no HEAD requests were issued.
+    let requests = server.received_requests().await.unwrap();
+    let head_requests: Vec<_> = requests
+        .iter()
+        .filter(|r| r.method == wiremock::http::Method::HEAD)
+        .collect();
+    assert!(
+        head_requests.is_empty(),
+        "no HEAD requests should be issued when validate_sitemap=false, got: {head_requests:?}"
+    );
 }
 
 /// Non-2xx status (500) treated as missing, not malformed.

@@ -631,7 +631,7 @@ Goal: `seo-rs https://example.com -d 3 -c 8` crawls multiple pages, merges into 
 - **[RUST]** `AtomicUsize::fetch_add(1, Ordering::Relaxed)` — `Relaxed` is correct for a counter without ordering dependencies.
 - Verify: `--max-pages 2` against 10-page site → exactly 2 pages in report.
 
-### 4.5 Sitemap URL validation pass
+### ✓ 4.5 Sitemap URL validation pass
 - Extend `sitemap.rs` to sample sitemap URLs (HEAD with semaphore-bounded concurrency), flag non-200s.
 - Gate behind `--validate-sitemap` flag (default off).
 
