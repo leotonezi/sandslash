@@ -329,7 +329,13 @@ async fn worker_loop(
 
                 let mut f = frontier.lock().await;
                 match f.enqueue(child.as_str(), next_depth).await {
-                    Ok(_) => {}
+                    Ok(true) => {}
+                    Ok(false) => {
+                        // Duplicate URL — was already seen; rollback the slot.
+                        if config.max_pages.is_some() {
+                            pages_fetched.fetch_sub(1, Ordering::Relaxed);
+                        }
+                    }
                     Err(e) => {
                         tracing::warn!(url = %child, error = %e, "failed to enqueue child URL");
                         // Rollback the counter since we didn't actually enqueue.
