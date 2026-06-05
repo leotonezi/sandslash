@@ -234,25 +234,6 @@ impl Fetcher {
             });
         }
     }
-
-    /// Issue a HEAD request to `url` and return the HTTP status code.
-    ///
-    /// Rate-limiting is applied before the request, same as [`fetch`].
-    /// Does not consume the response body.
-    pub async fn head(&self, url: &Url) -> Result<u16> {
-        let host = url.host_str().unwrap_or("");
-        self.rate_limiter.acquire(host).await;
-        let resp = self
-            .client
-            .head(url.as_str())
-            .send()
-            .await
-            .map_err(|e| SeoError::Fetch {
-                url: url.to_string(),
-                source: e,
-            })?;
-        Ok(resp.status().as_u16())
-    }
 }
 
 fn extract_headers(map: &HeaderMap) -> Headers {

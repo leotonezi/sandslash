@@ -105,6 +105,7 @@ async fn max_pages_2_on_10_page_site_yields_exactly_2_pages() {
         output_json: None,
         verbose: false,
         check_external_links: false,
+        validate_sitemap: false,
     };
 
     let report = sandslash::pipeline::run(config)
@@ -180,6 +181,7 @@ async fn global_timeout_returns_partial_report_not_error() {
         output_json: None,
         verbose: false,
         check_external_links: false,
+        validate_sitemap: false,
     };
 
     let result = sandslash::pipeline::run(config).await;

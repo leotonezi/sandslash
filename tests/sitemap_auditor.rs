@@ -242,8 +242,8 @@ async fn validate_sitemap_flags_broken_url() {
     config.validate_sitemap = true;
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: Arc::new(config),
+        fetcher: Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 
@@ -296,8 +296,8 @@ async fn validate_sitemap_disabled_emits_no_probe_findings() {
     let config = make_config(&server);
     let fetcher = make_fetcher(&config);
     let ctx = AuditContext {
-        config: &config,
-        fetcher: &fetcher,
+        config: Arc::new(config),
+        fetcher: Arc::new(fetcher),
     };
     let page = make_page(&format!("{}/", server.uri()));
 

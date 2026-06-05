@@ -25,6 +25,7 @@ fn make_config(server: &MockServer) -> CrawlConfig {
         verbose: false,
         output_json: None,
         check_external_links: false,
+        validate_sitemap: false,
     }
 }
 
