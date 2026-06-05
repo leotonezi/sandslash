@@ -20,7 +20,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 | 6 | `tokio::spawn` & `'static + Send` | `docs/rust/06-tokio-spawn.md` | `chore/docs/tokio-spawn` | [ ] |
 | 7 | Channels (`mpsc`) & drop-sender pattern | `docs/rust/07-channels-mpsc.md` | `chore/docs/channels-mpsc` | [ ] |
 | 8 | `Arc` vs `Rc` | `docs/rust/08-arc-vs-rc.md` | `chore/docs/arc-vs-rc` | [ ] |
-| 9 | Mutex/DashMap guards across `.await` | `docs/rust/09-guards-across-await.md` | `chore/docs/guards-across-await` | [ ] |
+| 9 | Mutex/DashMap guards across `.await` | `docs/rust/09-guards-across-await.md` | `chore/docs/guards-across-await` | [x] |
 | 10 | `spawn_blocking` | `docs/rust/10-spawn-blocking.md` | `chore/docs/spawn-blocking` | [ ] |
 | 11 | `Semaphore` for bounded concurrency | `docs/rust/11-semaphore.md` | `chore/docs/semaphore` | [ ] |
 | 12 | Atomics & memory ordering | `docs/rust/12-atomics.md` | `chore/docs/atomics` | [ ] |
