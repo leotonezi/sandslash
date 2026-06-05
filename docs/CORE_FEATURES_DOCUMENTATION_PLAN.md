@@ -14,7 +14,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 |---|-------|-----|--------|--------|
 | 1 | Ownership & borrowing | `docs/rust/01-ownership-borrowing.md` | `chore/docs/ownership-borrowing` | [ ] |
 | 2 | `Send` + `Sync` | `docs/rust/02-send-sync.md` | `chore/docs/send-sync` | [x] |
-| 3 | Trait objects | `docs/rust/03-trait-objects.md` | `chore/docs/trait-objects` | [ ] |
+| 3 | Trait objects | `docs/rust/03-trait-objects.md` | `chore/docs/trait-objects` | [x] |
 | 4 | `async_trait` | `docs/rust/04-async-trait.md` | `chore/docs/async-trait` | [ ] |
 | 5 | Error handling | `docs/rust/05-error-handling.md` | `chore/docs/error-handling` | [ ] |
 | 6 | `tokio::spawn` & `'static + Send` | `docs/rust/06-tokio-spawn.md` | `chore/docs/tokio-spawn` | [ ] |
