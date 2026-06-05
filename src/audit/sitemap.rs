@@ -110,16 +110,14 @@ pub(crate) fn extract_loc_urls(xml_bytes: &[u8], cap: usize) -> Vec<Url> {
             Ok(Event::End(_)) => {
                 inside_loc = false;
             }
-            Ok(Event::Text(ref e)) => {
-                if inside_loc && urls.len() < cap {
-                    if let Ok(raw) = e.unescape() {
-                        let text = raw.into_owned();
-                        if let Ok(u) = Url::parse(text.trim()) {
-                            urls.push(u);
-                        }
+            Ok(Event::Text(ref e)) if inside_loc && urls.len() < cap => {
+                if let Ok(raw) = e.unescape() {
+                    let text = raw.into_owned();
+                    if let Ok(u) = Url::parse(text.trim()) {
+                        urls.push(u);
                     }
-                    inside_loc = false;
                 }
+                inside_loc = false;
             }
             _ => {}
         }
