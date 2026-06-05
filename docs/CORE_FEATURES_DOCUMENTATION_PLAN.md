@@ -25,7 +25,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 | 11 | `Semaphore` for bounded concurrency | `docs/rust/11-semaphore.md` | `chore/docs/semaphore` | [x] |
 | 12 | Atomics & memory ordering | `docs/rust/12-atomics.md` | `chore/docs/atomics` | [ ] |
 | 13 | `Cow<str>` | `docs/rust/13-cow-str.md` | `chore/docs/cow-str` | [x] |
-| 14 | `LazyLock` / `once_cell` | `docs/rust/14-lazylockonce-cell.md` | `chore/docs/lazylockonce-cell` | [ ] |
+| 14 | `LazyLock` / `once_cell` | `docs/rust/14-lazylockonce-cell.md` | `chore/docs/lazylockonce-cell` | [x] |
 
 ---
 
