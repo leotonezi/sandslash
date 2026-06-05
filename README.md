@@ -38,7 +38,11 @@ sandslash <URL> [OPTIONS]
 | `--user-agent <UA>` | `sandslash/<version>` | Custom User-Agent |
 | `--timeout <secs>` | `30` | Per-request timeout |
 | `--max-pages <N>` | — | Cap pages crawled |
+| `--global-timeout <secs>` | — | Wall-clock timeout for the entire crawl; returns partial report on expiry |
 | `--ignore-robots` | false | Skip robots.txt |
+| `--validate-sitemap` | false | HEAD-probe every URL listed in sitemap.xml and flag non-2xx |
+| `--check-external-links` | false | Include external links in the broken-link audit |
+| `--verbose` | false | Enable verbose tracing output (alias for `RUST_LOG=sandslash=debug`) |
 | `-q, --quiet` | false | Print score only |
 | `--no-color` | false | Disable colored output |
 | `-o, --output <FILE>` | stdout | Write JSON report to file |
@@ -187,9 +191,9 @@ RUST_LOG=sandslash=debug sandslash https://example.com  # verbose
 
 - [x] Phase 0 — Scaffolding (config, CLI, logging)
 - [x] Phase 1 — Single-page fetch, parse, audit, JSON output
-- [ ] Phase 2 — Full auditor suite: redirects, robots.txt, sitemap, colored terminal report
-- [ ] Phase 3 — Multi-page crawler with Redis frontier, per-host rate limiting
-- [ ] Phase 4 — Broken-link checker, encoding robustness, progress bar, CI
+- [x] Phase 2 — Full auditor suite: redirects, robots.txt, sitemap, colored terminal report
+- [x] Phase 3 — Multi-page crawler with Redis frontier, per-host rate limiting
+- [x] Phase 4 — Broken-link checker, encoding robustness, progress bar, integration tests, CI
 
 ---
 
