@@ -18,7 +18,7 @@ actual code. Branch pattern: `chore/docs/<slug>`.
 | 4 | `async_trait` | `docs/rust/04-async-trait.md` | `chore/docs/async-trait` | [ ] |
 | 5 | Error handling | `docs/rust/05-error-handling.md` | `chore/docs/error-handling` | [ ] |
 | 6 | `tokio::spawn` & `'static + Send` | `docs/rust/06-tokio-spawn.md` | `chore/docs/tokio-spawn` | [ ] |
-| 7 | Channels (`mpsc`) & drop-sender pattern | `docs/rust/07-channels-mpsc.md` | `chore/docs/channels-mpsc` | [ ] |
+| 7 | Channels (`mpsc`) & drop-sender pattern | `docs/rust/07-channels-mpsc.md` | `chore/docs/channels-mpsc` | [x] |
 | 8 | `Arc` vs `Rc` | `docs/rust/08-arc-vs-rc.md` | `chore/docs/arc-vs-rc` | [ ] |
 | 9 | Mutex/DashMap guards across `.await` | `docs/rust/09-guards-across-await.md` | `chore/docs/guards-across-await` | [ ] |
 | 10 | `spawn_blocking` | `docs/rust/10-spawn-blocking.md` | `chore/docs/spawn-blocking` | [ ] |
