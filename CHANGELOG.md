@@ -4,6 +4,52 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.6.0] - 2026-06-05
+
+### Bug Fixes
+
+- **engine**: Allow too_many_arguments on spawn_crawl_workers ([d8a8a25](https://github.com/leotonezi/sandslash/commit/d8a8a25b48b02fd04c539e1c45bfc00b0e1d1889))
+- **ci**: Rebase onto development, remove duplicate head, fix test AuditContext types ([f3765b9](https://github.com/leotonezi/sandslash/commit/f3765b9fa7779da2c0c379f6d5d9715835b442c3))
+- **clippy**: Collapse nested if into match guard in extract_loc_urls ([a6f2896](https://github.com/leotonezi/sandslash/commit/a6f2896349740f7b3b0b3f180d348fc8d1ce7a5e))
+- **crawler**: Unique job_id and correct max_pages counter rollback ([328a9be](https://github.com/leotonezi/sandslash/commit/328a9be7b97641ab857dcbac9ea666a9499ed2f7))
+
+### Documentation
+
+- Add CLI runbook with common dev commands ([0799673](https://github.com/leotonezi/sandslash/commit/07996735972484219126355bcd57b0bd9e2a7462))
+- **rust**: Deep-dive on trait objects — fat pointers, vtables, object safety ([2e30dec](https://github.com/leotonezi/sandslash/commit/2e30decedba578a084c88df60a31605935b2fff8))
+- **rust**: Deep-dive on Send+Sync and !Send scraper::Html ([23d4290](https://github.com/leotonezi/sandslash/commit/23d42907ec5234a5387cd2d1ae6e1e480930a82d))
+- **rust**: Deep-dive on ownership & borrowing ([9f11d51](https://github.com/leotonezi/sandslash/commit/9f11d512462e25e4ea9636fd48450e5c7980965f))
+- **rust**: Deep-dive on Arc vs Rc — when each applies ([1978787](https://github.com/leotonezi/sandslash/commit/1978787aa3efcee9141327fa9c949d594d32beec))
+- **rust**: Deep-dive on LazyLock/once_cell for expensive statics ([2ac7c64](https://github.com/leotonezi/sandslash/commit/2ac7c64e0878c718fadea03520df6025de81662e))
+- **readme**: Add Phase 4 CLI flags and mark phases 2–4 complete; add Redis service to CI and run ignored tests (closes #80, #81) ([bfae51a](https://github.com/leotonezi/sandslash/commit/bfae51acc0772b83a774b4820d75f633868d12e4))
+- **rust**: Add semaphore deep-dive (topic 11) ([e9f2574](https://github.com/leotonezi/sandslash/commit/e9f2574a897b7eb2b264b939cc3ab130eaf84a97))
+- **rust**: Deep-dive on holding guards across .await ([422b99c](https://github.com/leotonezi/sandslash/commit/422b99cbb35aadccfaa916db944e3695d6514f9d))
+- **rust**: Add semaphore deep-dive (topic 11) ([ab79383](https://github.com/leotonezi/sandslash/commit/ab79383af0f61847063dc54212afb27f037d4f9e))
+- **rust**: Add Cow<str> deep-dive (topic 13) ([9af937b](https://github.com/leotonezi/sandslash/commit/9af937b6eb8f47814a225ec613676a7b768f76a9))
+- **rust**: Deep-dive on tokio::spawn and 'static + Send bounds ([2fc4a21](https://github.com/leotonezi/sandslash/commit/2fc4a211df9ae44dd18be112805e989e6f1c265c))
+- **rust**: Add Arc vs Rc deep-dive (topic 8) ([bab1a95](https://github.com/leotonezi/sandslash/commit/bab1a959a7db4864deb77d746236868b3022a61b))
+- **rust**: Add async-trait deep-dive (topic 4) ([38a97a8](https://github.com/leotonezi/sandslash/commit/38a97a89c7759b10da52c519f1db8b8045e24e03))
+- **rust**: Add deep-dive on error handling with thiserror and anyhow ([cbc2cc4](https://github.com/leotonezi/sandslash/commit/cbc2cc4eb931cb58023b87e1bdd5c4d064f6c894))
+- **rust**: Add async-trait deep-dive (topic 4) ([024e31e](https://github.com/leotonezi/sandslash/commit/024e31e69920af9958e6c788c444e694ccfb7c49))
+- **rust**: Deep-dive on mpsc channels and drop-sender pattern ([b040477](https://github.com/leotonezi/sandslash/commit/b040477287cbdc2991714b537a0079542642b11e))
+- **rust**: Deep-dive on mpsc channels and drop-sender pattern (topic 7) ([d202469](https://github.com/leotonezi/sandslash/commit/d20246979b23e28c2917afdfaafe9589c0ae288f))
+- Mark topic 5 [x] in plan ([9aeb171](https://github.com/leotonezi/sandslash/commit/9aeb171bcbeedcbfa35ed0d453da30062620af01))
+- Mark topic 12 [x] in plan ([be5a67a](https://github.com/leotonezi/sandslash/commit/be5a67a9cfb628e7a447c7ce44566f3cfc931bd0))
+- Mark topic 6 [x] in plan ([7a599d3](https://github.com/leotonezi/sandslash/commit/7a599d32f36b745a5d54be99cf8c69d608c999b4))
+- **rust**: Add deep-dive on error handling with thiserror and anyhow ([feafdbc](https://github.com/leotonezi/sandslash/commit/feafdbcac79ee697f015433d9b765f3840397e56))
+- **rust**: Deep-dive on spawn_blocking for !Send and CPU-bound work ([6df8659](https://github.com/leotonezi/sandslash/commit/6df8659fb9738c0e121de811c3fd3d8aaa4ed69a))
+- Mark topic 10 [x] in plan ([81789ea](https://github.com/leotonezi/sandslash/commit/81789ead243f6020eb7ee2be1da695f8141738df))
+- Mark topic 8 [x] in plan ([2c6817b](https://github.com/leotonezi/sandslash/commit/2c6817b4537fd386900fe4da1d4833e047827acd))
+
+### Features
+
+- **fetcher**: Charset-aware body decoding with encoding_rs (closes #54) ([502a9ff](https://github.com/leotonezi/sandslash/commit/502a9ffcdc4c1e2198197760635d21c7d2504435))
+- **report**: Progress bar with ProgressReporter — phase 4 step 4.3 (closes #56) ([c8afe4b](https://github.com/leotonezi/sandslash/commit/c8afe4bc90bd3de0795cddbe097b93c814657924))
+- **safety-valves**: --global-timeout and --max-pages enforcement (closes #58) ([6ff7b81](https://github.com/leotonezi/sandslash/commit/6ff7b8131e141807e88a83db4b56c886891319a6))
+- **sitemap**: Concurrent HEAD-probe validation pass — step 4.5 (closes #60) ([8be1a60](https://github.com/leotonezi/sandslash/commit/8be1a6087399fa82bebf554c5692af36fb0dbf68))
+- **audit**: JS-rendered page detection — step 4.6 (closes #62) ([5ac5fcf](https://github.com/leotonezi/sandslash/commit/5ac5fcf1ec6d6b284f6b57565e812e7f9a5d62ac))
+- **tests**: Wiremock integration test suite — step 4.7 (closes #68) ([205079f](https://github.com/leotonezi/sandslash/commit/205079f18cfd01a60b47c0953506606a41aa225d))
+
 ## [0.5.0] - 2026-06-03
 
 ### Bug Fixes
@@ -16,6 +62,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 
 - Add AGPL-3.0 license, deploy guide, and .DS_Store gitignore ([2b6749e](https://github.com/leotonezi/sandslash/commit/2b6749ea38eb40cf54e07e817924c3b18f1aa757))
 - Release sandslash version 0.4.0 ([60a9b67](https://github.com/leotonezi/sandslash/commit/60a9b674cda154152c65dc0d381312d43955d5e5))
+- Release sandslash version 0.5.0 ([61c9e5f](https://github.com/leotonezi/sandslash/commit/61c9e5f8d9652f34acc6bcd037b914f7e232601f))
 
 ### Features
 
@@ -24,6 +71,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Integrate HostRateLimiter into Fetcher with 429/503 retry backoff (closes #43) ([4e57678](https://github.com/leotonezi/sandslash/commit/4e57678eda9439d5a9d11f36782bffb806f5add7))
 - Implement worker-pool crawl engine (closes #45) ([2d194e5](https://github.com/leotonezi/sandslash/commit/2d194e52aa9bae209bac5fc960866c36bc356c1d))
 - Wire crawler pipeline — branch pipeline on depth, add frontier.clear() and integration test (closes #47) ([3271897](https://github.com/leotonezi/sandslash/commit/3271897cf5562d80f11418a372d54ee63e4868a2))
+- Broken-link auditor at scale (closes #52) ([304f488](https://github.com/leotonezi/sandslash/commit/304f48879b1d2e0d0da4ff8b2f9d0196fe81a091))
 
 ### Merge
 
@@ -107,6 +155,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.6.0]: https://github.com/leotonezi/sandslash/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/leotonezi/sandslash/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/leotonezi/sandslash/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/leotonezi/sandslash/compare/v0.2.0...v0.3.0
