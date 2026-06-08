@@ -14,10 +14,12 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 ### Scheduled Re-audits
 - Cron jobs that re-crawl sites on a schedule (daily/weekly)
 - Email/webhook alerts on regressions
+- **Risk:** turns seo-rs into a SaaS product — defer until CLI phases 2–4 are solid; building auth + cron + email freezes the Rust core for months
 
 ### Multi-site Management
 - UI lists managed sites, not one-shot URL entry
 - Per-site audit history, last crawl status, average score
+- **Risk:** same scope creep as scheduled re-audits; only makes sense after Postgres persistence exists
 
 ### Real-time Crawl Progress
 - SSE or WebSockets from crawl engine → browser
@@ -32,6 +34,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Integrate Lighthouse via `@lhci/cli` or PageSpeed Insights API (free quota)
 - CWV (LCP, INP, CLS) are a confirmed ranking factor
 - Add `Category::Performance` to the scoring model
+- **Risk:** PageSpeed API requires a key + has rate limits; `@lhci/cli` requires a Node.js runtime — both are external deps that break in CI/prod; CWV measures real-user perf, not HTML quality, so it's a different tool category; if `Category::Performance` is added, CWV absence silently zeros the score — isolate behind a `--cwv` flag if built
 
 ### Structured Data / Schema.org Validation
 - Parse `<script type="application/ld+json">` blocks
@@ -55,6 +58,25 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Render OG/Twitter card preview in the UI
 - Show exactly what LinkedIn, X, Facebook will display
 - Pulls from existing `og:*` and `twitter:*` data already audited
+- **Risk:** low differentiation — every browser extension does this; deprioritize
+
+---
+
+## Missing — Worth Adding
+
+### Canonical URL Audit
+- Check `<link rel="canonical">` is present, self-referential, and consistent across redirect chains
+- Common misconfiguration, pure HTML parsing, zero external deps
+
+### ✓ Benchmark Suite (`criterion`)
+- Measure fetch throughput vs. concurrency level
+- Measure audit pipeline throughput (pages/sec)
+- Required before making any performance claims; significant gap for senior showcase
+
+### `--diff` Mode
+- Compare two audit JSON reports and emit score delta per page/category
+- Natural extension once Postgres or file-based history exists
+- High demo value: shows regressions at a glance
 
 ---
 
@@ -70,12 +92,16 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 
 ```
 1. Finish IMPLEMENTATION.md phases 2–4 (crawler is the unlock)
-2. Postgres persistence + audit history UI
-3. SSE real-time progress in UI
-4. Scheduled re-audits
-5. Core Web Vitals (Lighthouse integration)
-6. Structured data validation
-7. hreflang checks
-8. Page speed hints (static)
-9. Social preview renderer
+2. Benchmark suite (criterion) — needed before performance claims
+3. Canonical URL audit — pure HTML, zero deps, high impact
+4. Postgres persistence + audit history UI
+5. SSE real-time progress in UI
+6. --diff mode (natural once history exists)
+7. Structured data / Schema.org validation
+8. hreflang checks
+9. Page speed hints (static)
+10. Scheduled re-audits (defer — SaaS scope, freezes Rust core)
+11. Multi-site management (depends on #4)
+12. Core Web Vitals — isolate behind --cwv flag, Node.js dep
+13. Social preview renderer (low priority — low differentiation)
 ```

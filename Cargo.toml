@@ -37,6 +37,19 @@ wiremock = "0.6"
 pretty_assertions = "1"
 tempfile = "3"
 tokio = { version = "1", features = ["test-util", "macros"] }
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+
+[[bench]]
+name = "fetch_throughput"
+harness = false
+
+[[bench]]
+name = "page_audit_throughput"
+harness = false
+
+[[bench]]
+name = "parse_dom"
+harness = false
 
 [profile.dev.package."*"]
 opt-level = 1
