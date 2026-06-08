@@ -4,6 +4,13 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.7.0] - 2026-06-08
+
+### Features
+
+- Enhance post mvp features ([64b1437](https://github.com/leotonezi/sandslash/commit/64b14370a7ce7257caae9462db3c1d0eabd15575))
+- **benches**: Add criterion benchmark suite for parse, audit, and fetch ([600afd5](https://github.com/leotonezi/sandslash/commit/600afd5fc778b605b569f4ce1a53e8718e5278d6))
+
 ## [0.6.0] - 2026-06-05
 
 ### Bug Fixes
@@ -12,6 +19,10 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - **ci**: Rebase onto development, remove duplicate head, fix test AuditContext types ([f3765b9](https://github.com/leotonezi/sandslash/commit/f3765b9fa7779da2c0c379f6d5d9715835b442c3))
 - **clippy**: Collapse nested if into match guard in extract_loc_urls ([a6f2896](https://github.com/leotonezi/sandslash/commit/a6f2896349740f7b3b0b3f180d348fc8d1ce7a5e))
 - **crawler**: Unique job_id and correct max_pages counter rollback ([328a9be](https://github.com/leotonezi/sandslash/commit/328a9be7b97641ab857dcbac9ea666a9499ed2f7))
+
+### Chores
+
+- Release sandslash version 0.6.0 ([a4dfd3e](https://github.com/leotonezi/sandslash/commit/a4dfd3ec08c3733898f3fe8c963bffa56a44863b))
 
 ### Documentation
 
@@ -155,6 +166,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.7.0]: https://github.com/leotonezi/sandslash/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/leotonezi/sandslash/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/leotonezi/sandslash/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/leotonezi/sandslash/compare/v0.3.0...v0.4.0
