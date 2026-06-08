@@ -68,7 +68,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Check `<link rel="canonical">` is present, self-referential, and consistent across redirect chains
 - Common misconfiguration, pure HTML parsing, zero external deps
 
-### Benchmark Suite (`criterion`)
+### ✓ Benchmark Suite (`criterion`)
 - Measure fetch throughput vs. concurrency level
 - Measure audit pipeline throughput (pages/sec)
 - Required before making any performance claims; significant gap for senior showcase

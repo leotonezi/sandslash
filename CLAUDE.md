@@ -8,7 +8,7 @@ Rust CLI SEO auditing tool. Pipeline: `fetch -> parse -> audit -> score -> repor
 - Agent workflow: `docs/AGENT_WORKFLOW.md`
 
 ## Root folder rules
-Only these belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `cliff.toml`, `release.toml`, `CHANGELOG.md`, `LICENSE`, `src/`, `tests/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`, `frontend/`, `docs/`, `.github/`
+Only these belong at root: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `cliff.toml`, `release.toml`, `CHANGELOG.md`, `LICENSE`, `src/`, `tests/`, `benches/`, `.gitignore`, `CLAUDE.md`, `.claude/`, `README.md`, `frontend/`, `docs/`, `.github/`
 Everything else goes in `docs/`. Before adding any file to root, ask: does Cargo, Rust, a release tool, or Claude Code require it here? If not, it goes in `docs/`.
 
 ## Stack
