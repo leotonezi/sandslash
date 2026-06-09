@@ -6,6 +6,8 @@ Rust CLI for SEO auditing. Fetches a page, parses the DOM, runs a suite of check
 $ sandslash https://example.com -o report.json
 ```
 
+![sandslash demo](docs/seo_rs.gif)
+
 ---
 
 ## Install
