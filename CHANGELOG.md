@@ -4,7 +4,22 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.7.3] - 2026-06-09
+
+### Chores
+
+- Ignore .claude/worktrees/ ([396e627](https://github.com/leotonezi/sandslash/commit/396e627fae8d95ec36a62f42c046612a9fe0ad37))
+
+### Documentation
+
+- Speed up demo GIF 2x ([672e2e1](https://github.com/leotonezi/sandslash/commit/672e2e17682a3d7234b86a63d033b623d575a531))
+- Add Rust Engineering Notes section to README ([c31d974](https://github.com/leotonezi/sandslash/commit/c31d974d2c40b989fd715979b5f50e88b0420ba7))
+
 ## [0.7.2] - 2026-06-09
+
+### Chores
+
+- Release sandslash version 0.7.2 ([02107c3](https://github.com/leotonezi/sandslash/commit/02107c3f8d6924cf424f98861d3d83f542fc5b9f))
 
 ### Documentation
 
@@ -186,6 +201,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.7.3]: https://github.com/leotonezi/sandslash/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/leotonezi/sandslash/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/leotonezi/sandslash/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/leotonezi/sandslash/compare/v0.6.0...v0.7.0
