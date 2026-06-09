@@ -4,7 +4,17 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.7.1] - 2026-06-09
+
+### Documentation
+
+- Add demo GIF and reference in README ([55131d0](https://github.com/leotonezi/sandslash/commit/55131d0d4da2df9bce4bf498c28eccd872e7ffd4))
+
 ## [0.7.0] - 2026-06-08
+
+### Chores
+
+- Release sandslash version 0.7.0 ([b24f44a](https://github.com/leotonezi/sandslash/commit/b24f44a53b2d9a27ff76c9f4fb793a6dec1d0b07))
 
 ### Features
 
@@ -166,6 +176,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.7.1]: https://github.com/leotonezi/sandslash/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/leotonezi/sandslash/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/leotonezi/sandslash/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/leotonezi/sandslash/compare/v0.4.0...v0.5.0
