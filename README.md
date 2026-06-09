@@ -199,6 +199,25 @@ RUST_LOG=sandslash=debug sandslash https://example.com  # verbose
 
 ---
 
+## Rust Engineering Notes
+
+Non-obvious problems solved building this — documented with code references:
+
+| Topic | Why it matters |
+|---|---|
+| [`Send` + `Sync`](docs/rust/02-send-sync.md) | `scraper::Html` is `!Send` — how the async crawler avoids deadlocks |
+| [Guards across `.await`](docs/rust/09-guards-across-await.md) | DashMap entry guards + the rate limiter's `Arc` clone pattern |
+| [`spawn_blocking`](docs/rust/10-spawn-blocking.md) | Running `!Send` DOM work on the blocking thread pool |
+| [Semaphore](docs/rust/11-semaphore.md) | Bounded concurrency for the broken-link checker |
+| [Channels & drop-sender](docs/rust/07-channels-mpsc.md) | Worker pool termination without hangs |
+| [Error handling](docs/rust/05-error-handling.md) | `thiserror` in lib code, `anyhow` at binary boundary |
+| [`Cow<str>`](docs/rust/13-cow-str.md) | `encoding_rs` non-UTF-8 decoding without extra allocations |
+| [Trait objects](docs/rust/03-trait-objects.md) | `Box<dyn PageAuditor + Send + Sync>` — fat pointers, vtables, object safety |
+| [Ownership & borrowing](docs/rust/01-ownership-borrowing.md) | `Arc` clone vs inner value — when each applies |
+| [Tokio spawn](docs/rust/06-tokio-spawn.md) | `'static + Send` bounds and the worker pool design |
+
+---
+
 ## Development
 
 ```bash
