@@ -215,6 +215,7 @@ Non-obvious problems solved building this — documented with code references:
 | [Trait objects](docs/rust/03-trait-objects.md) | `Box<dyn PageAuditor + Send + Sync>` — fat pointers, vtables, object safety |
 | [Ownership & borrowing](docs/rust/01-ownership-borrowing.md) | `Arc` clone vs inner value — when each applies |
 | [Tokio spawn](docs/rust/06-tokio-spawn.md) | `'static + Send` bounds and the worker pool design |
+| [Consistent hashing](docs/rust/15-consistent-hashing.md) | Modulo vs ring-based host routing — why node changes break `hash % N` |
 
 ---
 
