@@ -81,6 +81,17 @@ impl Dom {
             .map(|s| s.trim().to_owned())
     }
 
+    /// All `<link rel="canonical">` hrefs in document order, trimmed.
+    ///
+    /// Returns an empty `Vec` when no canonical links are present.
+    pub fn canonicals(&self) -> Vec<String> {
+        self.html
+            .select(&SEL_CANONICAL)
+            .filter_map(|el| el.attr("href"))
+            .map(|s| s.trim().to_owned())
+            .collect()
+    }
+
     pub fn headings(&self) -> Vec<(u8, String)> {
         let mut result = Vec::new();
         for level in 1u8..=6 {
