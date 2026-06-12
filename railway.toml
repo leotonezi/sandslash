@@ -5,3 +5,4 @@ builder = "DOCKERFILE"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
+

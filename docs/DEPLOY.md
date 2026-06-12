@@ -20,8 +20,9 @@ The frontend API route shells out to the binary via `SEO_RS_BIN` — no code cha
 | `SEO_RS_BIN` | `/usr/local/bin/sandslash` | Baked into Dockerfile — no action needed |
 | `PORT` | `3000` | Set by Railway automatically |
 | `NODE_ENV` | `production` | Baked into Dockerfile |
+| `LIVE_DEMO_RATE_LIMIT_PROTECTION` | *(unset)* | Set to `"true"` in Railway dashboard to enable rate limiting (5 req/min per IP, max 3 concurrent audits) |
 
-No variables need to be set in the Railway dashboard for basic operation.
+Set `LIVE_DEMO_RATE_LIMIT_PROTECTION=true` in the Railway dashboard under **Variables** before going live.
 
 ---
 
