@@ -1,0 +1,13 @@
+target/
+frontend/node_modules/
+frontend/.next/
+.git/
+.github/
+docs/
+tests/
+benches/
+.env
+.env.*
+.DS_Store
+*.md
+!README.md

@@ -1,133 +1,101 @@
-# Deployment Guide (Option A — Split Stack)
+# Deploying sandslash to Railway
 
-Frontend on Vercel, Rust API on Railway. Frontend calls the Rust server via HTTP.
-
-```
-Vercel (Next.js) → POST https://<your-app>.railway.app/audit → Rust HTTP server
-```
+Single Docker image: `sandslash` Rust binary + Next.js 14 frontend.
+The frontend API route shells out to the binary via `SEO_RS_BIN` — no code changes needed.
 
 ---
 
-## 1. Add HTTP API to seo-rs
+## Prerequisites
 
-The Rust binary currently runs as a CLI. To deploy as a server, add an `axum` HTTP layer.
-
-Add to `Cargo.toml`:
-```toml
-axum = "0.7"
-tower = "0.4"
-```
-
-Create `src/server.rs`:
-```rust
-use axum::{extract::Json, response::Json as ResJson, routing::post, Router};
-use serde::Deserialize;
-use std::net::SocketAddr;
-
-#[derive(Deserialize)]
-struct AuditRequest {
-    url: String,
-    depth: Option<u32>,
-}
-
-async fn audit_handler(Json(req): Json<AuditRequest>) -> ResJson<serde_json::Value> {
-    // build CrawlConfig from req, call pipeline::run, return AuditReport as JSON
-    todo!()
-}
-
-pub async fn serve(addr: SocketAddr) {
-    let app = Router::new().route("/audit", post(audit_handler));
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-```
-
-Wire into `main.rs` via a `--serve` flag (or separate binary target).
+- [Railway account](https://railway.app)
+- Railway CLI: `npm install -g @railway/cli`
+- Docker (for local verification only)
 
 ---
 
-## 2. Dockerize the Rust server
+## Environment variables
 
-Create `Dockerfile` at repo root:
-```dockerfile
-FROM rust:1.78-slim as builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release
+| Variable | Default in image | Notes |
+|---|---|---|
+| `SEO_RS_BIN` | `/usr/local/bin/sandslash` | Baked into Dockerfile — no action needed |
+| `PORT` | `3000` | Set by Railway automatically |
+| `NODE_ENV` | `production` | Baked into Dockerfile |
 
-FROM debian:bookworm-slim
-COPY --from=builder /app/target/release/sandslash /usr/local/bin/sandslash
-EXPOSE 8080
-CMD ["sandslash", "--serve", "0.0.0.0:8080"]
-```
+No variables need to be set in the Railway dashboard for basic operation.
 
 ---
 
-## 3. Deploy Rust API to Railway
-
-1. Sign up at railway.app (free tier: 500h/month).
-2. New project → Deploy from GitHub repo → select this repo.
-3. Railway auto-detects Dockerfile.
-4. Set environment variables in Railway dashboard:
-   - `REDIS_URL` — if using crawler with Redis frontier (optional for single-page audits)
-   - `RUST_LOG=sandslash=info`
-5. After deploy, copy the public URL: `https://<your-app>.railway.app`
-
----
-
-## 4. Update Next.js frontend
-
-In `frontend/`, replace the subprocess call in `app/api/audit/route.ts` with an HTTP call:
-
-```ts
-const API_URL = process.env.SEO_RS_API_URL ?? "http://localhost:8080";
-
-export async function POST(req: Request) {
-  const body = await req.json();
-  const res = await fetch(`${API_URL}/audit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const report = await res.json();
-  return Response.json(report);
-}
-```
-
----
-
-## 5. Deploy frontend to Vercel
-
-1. Sign up at vercel.com.
-2. New project → Import Git repo → select this repo.
-3. Set root directory to `frontend/`.
-4. Add environment variable:
-   - `SEO_RS_API_URL` = `https://<your-app>.railway.app`
-5. Deploy. Vercel auto-deploys on every push to `master`.
-
----
-
-## 6. Local development
-
-Run both locally:
+## Deploy
 
 ```bash
-# Terminal 1 — Rust API
-cargo run -- --serve 0.0.0.0:8080
+# One-time setup
+railway login
+railway link          # select or create project + service
 
-# Terminal 2 — Next.js
-cd frontend
-SEO_RS_API_URL=http://localhost:8080 npm run dev
+# Deploy
+railway up            # builds Dockerfile, pushes, deploys
+```
+
+Railway streams build logs. When the deploy finishes, the public URL appears in the dashboard under **Settings → Domains**.
+
+---
+
+## Verify
+
+```bash
+PUBLIC_URL=https://your-app.up.railway.app
+
+# Health check
+curl -fsS "$PUBLIC_URL/api/health"
+# → {"ok":true}
+
+# Audit smoke test
+curl -X POST "$PUBLIC_URL/api/audit" \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://example.com"}'
+# → {"report":{"pages":[...],...}}
 ```
 
 ---
 
-## Cost
+## Local Docker verification
 
-| Service | Free tier |
-|---|---|
-| Railway | 500 CPU-hours/month, sleeps after inactivity |
-| Vercel | Unlimited hobby deployments |
-| Redis (frontier) | Railway Redis add-on, 25MB free |
+```bash
+# Build
+docker build -t sandslash-demo .
 
-For a demo/portfolio project the free tiers are sufficient. Railway spins down idle services — first request after idle may be slow (~5s cold start).
+# Size check (should be < 250 MB)
+docker images sandslash-demo
+
+# Boot
+docker run --rm -p 3000:3000 sandslash-demo
+
+# In another terminal:
+curl localhost:3000/api/health
+curl -X POST localhost:3000/api/audit \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://example.com"}'
+```
+
+---
+
+## Rollback
+
+Railway keeps previous deploys. To roll back:
+
+1. Dashboard → **Deployments** tab
+2. Click the previous successful deploy
+3. **Redeploy**
+
+Or via CLI:
+```bash
+railway rollback
+```
+
+---
+
+## Notes
+
+- `--depth 0` is hardcoded in the API route — multi-page crawl (Redis) is not wired yet.
+- Cold start on Railway free tier (auto-sleep) is ~2–5s on first request after idle.
+- Temp files written to `/tmp` during audits are cleaned up in a `finally` block in `route.ts`.

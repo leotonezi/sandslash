@@ -52,7 +52,7 @@ export async function POST(request: Request): Promise<Response> {
       (resolve) => {
         const stderrChunks: Buffer[] = [];
 
-        const child = spawn(binPath, [url, "-o", tempPath], {
+        const child = spawn(binPath, [url, "--depth", "0", "-o", tempPath], {
           stdio: ["ignore", "ignore", "pipe"],
         });
 
