@@ -10,6 +10,14 @@ $ sandslash https://example.com -o report.json
 
 ---
 
+## Live demo
+
+Try it at **[sandslash.up.railway.app](https://sandslash.up.railway.app)** — enter any URL and get a full SEO audit in seconds.
+
+To deploy your own instance, see [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+---
+
 ## Install
 
 **From source** (requires Rust stable):
