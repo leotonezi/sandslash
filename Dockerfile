@@ -1,5 +1,5 @@
 # ── Stage 1: Rust builder ────────────────────────────────────────────────────
-FROM rust:1-bookworm AS rust-builder
+FROM rust:1-bookworm-slim AS rust-builder
 WORKDIR /build
 
 # Cache dependency compilation separately from source changes
