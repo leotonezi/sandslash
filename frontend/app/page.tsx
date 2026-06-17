@@ -1,20 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import type { AuditReport } from "./components/ReportView.types";
+import type { AuditReport, AuditRunSummary, RegressionResult } from "./components/ReportView.types";
 import ReportView from "./components/ReportView";
+import HistoryChart from "./components/HistoryChart";
+import RegressionBadge from "./components/RegressionBadge";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [report, setReport] = useState<AuditReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<AuditRunSummary[]>([]);
+  const [regression, setRegression] = useState<RegressionResult>({ regressed: false });
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setReport(null);
     setError(null);
     setLoading(true);
+    setHistory([]);
+    setRegression({ regressed: false });
 
     try {
       const res = await fetch("/api/audit", {
@@ -35,6 +41,21 @@ export default function Home() {
         setError(msg);
       } else {
         setReport(data.report);
+
+        const host = new URL(data.report.root).host;
+        try {
+          const histRes = await fetch(`/api/history?host=${encodeURIComponent(host)}`);
+          if (histRes.ok) {
+            const histData = (await histRes.json()) as {
+              runs: AuditRunSummary[];
+              regression: RegressionResult;
+            };
+            setHistory(histData.runs);
+            setRegression(histData.regression);
+          }
+        } catch {
+          // history is non-critical — ignore failures
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
@@ -83,7 +104,13 @@ export default function Home() {
         </div>
       )}
 
-      {report && <ReportView report={report} />}
+      {report && (
+        <>
+          <RegressionBadge result={regression} />
+          <ReportView report={report} />
+          <HistoryChart runs={history} />
+        </>
+      )}
     </main>
   );
 }
