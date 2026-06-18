@@ -21,6 +21,9 @@ pub struct JobHandle {
     pub root: String,
     /// Job ID, also used for the synthetic `Started` event.
     pub job_id: String,
+    /// Terminal event (Done or Error) stored so late SSE subscribers that miss
+    /// the broadcast can still receive it via history replay.
+    pub terminal: Arc<std::sync::Mutex<Option<ProgressEvent>>>,
 }
 
 #[derive(Clone)]

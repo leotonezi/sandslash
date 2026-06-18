@@ -7,7 +7,7 @@ use axum::{
     },
 };
 use serde::Deserialize;
-use std::{convert::Infallible, time::Duration};
+use std::{convert::Infallible, sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 use tokio_stream::wrappers::BroadcastStream;
 use uuid::Uuid;
@@ -36,6 +36,8 @@ pub async fn start_audit(
 ) -> Result<(StatusCode, Json<serde_json::Value>), SeoError> {
     let job_id = Uuid::new_v4().to_string();
     let (tx, _rx) = broadcast::channel::<ProgressEvent>(256);
+    let terminal: Arc<std::sync::Mutex<Option<ProgressEvent>>> =
+        Arc::new(std::sync::Mutex::new(None));
 
     // Parse root URL before inserting the job handle so the root is available.
     let root_url: url::Url = req.url.parse().map_err(SeoError::Url)?;
@@ -47,6 +49,7 @@ pub async fn start_audit(
             created_at: std::time::Instant::now(),
             root: root_url.to_string(),
             job_id: job_id.clone(),
+            terminal: terminal.clone(),
         },
     );
 
@@ -70,19 +73,21 @@ pub async fn start_audit(
     };
 
     // Spawn the audit pipeline as a background task.
-    // Note: the Started event is synthesized per-subscriber in stream_events,
-    // so we don't need to broadcast it here.
+    // The Started event is synthesized per-subscriber in stream_events.
+    // Terminal events (Done/Error) are stored in `terminal` BEFORE broadcasting
+    // so late SSE subscribers can replay them via history.
     tokio::spawn(async move {
-        match crate::pipeline::run_for_server(config, tx.clone()).await {
-            Ok(report) => {
-                let _ = tx.send(ProgressEvent::Done { report });
-            }
-            Err(e) => {
-                let _ = tx.send(ProgressEvent::Error {
-                    message: e.to_string(),
-                });
-            }
+        let event = match crate::pipeline::run_for_server(config, tx.clone()).await {
+            Ok(report) => ProgressEvent::Done { report },
+            Err(e) => ProgressEvent::Error {
+                message: e.to_string(),
+            },
+        };
+        // Store terminal event for history replay before broadcasting.
+        if let Ok(mut guard) = terminal.lock() {
+            *guard = Some(event.clone());
         }
+        let _ = tx.send(event);
     });
 
     Ok((
@@ -98,60 +103,77 @@ pub async fn stream_events(
     Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>> + Send + 'static>,
     SeoError,
 > {
-    let (tx, synthetic_started) = {
+    use futures::StreamExt as FutStreamExt;
+
+    // Subscribe to broadcast AND snapshot the terminal event atomically
+    // (no .await between these two operations so no race window).
+    let (tx, synthetic_started, terminal_snapshot) = {
         let handle = state
             .jobs
             .get(&id)
             .ok_or_else(|| SeoError::JobNotFound(id.clone()))?;
-        // Subscribe before dropping the guard so no events are missed between
-        // reading the handle and subscribing.
         let rx_tx = handle.tx.clone();
         let started = ProgressEvent::Started {
             job_id: handle.job_id.clone(),
             root: handle.root.clone(),
         };
-        (rx_tx, started)
+        // Snapshot terminal before dropping the guard.
+        let terminal = handle.terminal.lock().ok().and_then(|g| g.clone());
+        (rx_tx, started, terminal)
         // DashMap guard dropped here — before any .await
     };
 
-    let rx = tx.subscribe();
-
-    // Prepend a synthetic Started event so late subscribers (who missed the
-    // initial broadcast) always receive it as the first frame.
+    // Prepend a synthetic Started event (always sent, even to late subscribers).
     let synthetic_sse = synthetic_started.to_sse_event().unwrap_or_else(|e| {
         Event::default().comment(format!("serialize error in synthetic Started: {e}"))
     });
     let prefix_stream = tokio_stream::once(Ok::<Event, Infallible>(synthetic_sse));
 
-    // Use futures::StreamExt::scan (async version) to terminate the stream
-    // after a Done or Error event is forwarded to the client.
-    // tokio_stream::StreamExt does not provide scan, hence the qualified import.
-    use futures::StreamExt as FutStreamExt;
-    let broadcast_stream = FutStreamExt::scan(BroadcastStream::new(rx), false, |terminal, item| {
-        let result = if *terminal {
-            None
+    // If the audit already finished before this subscriber arrived, replay the
+    // terminal event directly from the history snapshot and skip the broadcast.
+    let stream: futures::stream::BoxStream<'static, Result<Event, Infallible>> =
+        if let Some(terminal_event) = terminal_snapshot {
+            let terminal_sse = terminal_event.to_sse_event().unwrap_or_else(|e| {
+                Event::default().comment(format!("serialize error in terminal replay: {e}"))
+            });
+            let terminal_stream = tokio_stream::once(Ok::<Event, Infallible>(terminal_sse));
+            FutStreamExt::boxed(tokio_stream::StreamExt::chain(
+                prefix_stream,
+                terminal_stream,
+            ))
         } else {
-            match item {
-                Ok(ref event) => {
-                    if matches!(
-                        event,
-                        ProgressEvent::Done { .. } | ProgressEvent::Error { .. }
-                    ) {
-                        *terminal = true;
-                    }
-                    Some(Ok(event.to_sse_event().unwrap_or_else(|e| {
-                        Event::default().comment(format!("serialize error: {e}"))
-                    })))
-                }
-                Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(n)) => {
-                    Some(Ok(Event::default().comment(format!("lagged {n} frames"))))
-                }
-            }
+            // Audit still in progress — subscribe to broadcast for live events.
+            // scan terminates the stream after Done or Error is forwarded.
+            let rx = tx.subscribe();
+            let broadcast_stream =
+                FutStreamExt::scan(BroadcastStream::new(rx), false, |done, item| {
+                    let result = if *done {
+                        None
+                    } else {
+                        match item {
+                            Ok(ref event) => {
+                                if matches!(
+                                    event,
+                                    ProgressEvent::Done { .. } | ProgressEvent::Error { .. }
+                                ) {
+                                    *done = true;
+                                }
+                                Some(Ok(event.to_sse_event().unwrap_or_else(|e| {
+                                    Event::default().comment(format!("serialize error: {e}"))
+                                })))
+                            }
+                            Err(
+                                tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(n),
+                            ) => Some(Ok(Event::default().comment(format!("lagged {n} frames")))),
+                        }
+                    };
+                    std::future::ready(result)
+                });
+            FutStreamExt::boxed(tokio_stream::StreamExt::chain(
+                prefix_stream,
+                broadcast_stream,
+            ))
         };
-        std::future::ready(result)
-    });
-
-    let stream = tokio_stream::StreamExt::chain(prefix_stream, broadcast_stream);
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15))))
 }
