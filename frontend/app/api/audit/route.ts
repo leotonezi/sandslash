@@ -5,6 +5,8 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
+import { saveAuditRun } from "@/lib/history";
+import type { AuditReport } from "@/app/components/ReportView.types";
 
 const PROTECTION_ENABLED = process.env.LIVE_DEMO_RATE_LIMIT_PROTECTION === "true";
 const MAX_CONCURRENT = 3;
@@ -160,6 +162,12 @@ export async function POST(request: Request): Promise<Response> {
         },
         { status: 500 }
       );
+    }
+
+    try {
+      await saveAuditRun(report as AuditReport);
+    } catch (err) {
+      console.error("[audit] persistence failed:", err);
     }
 
     return Response.json({ report });
