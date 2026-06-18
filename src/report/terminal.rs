@@ -3,9 +3,11 @@ use std::io::Write;
 use comfy_table::Table;
 use indicatif::{ProgressBar, ProgressStyle};
 use owo_colors::{AnsiColors, OwoColorize};
+use tokio::sync::broadcast;
 
 use crate::error::Result;
 use crate::model::{AuditReport, Category, Severity};
+use crate::server::progress::ProgressEvent;
 
 // ── ProgressReporter ──────────────────────────────────────────────────────────
 
@@ -13,6 +15,7 @@ use crate::model::{AuditReport, Category, Severity};
 /// but may be hidden (no-op) when `quiet` or non-TTY.
 ///
 /// Clone is cheap — the underlying `ProgressBar` is `Arc`-backed.
+/// An optional broadcast sender forwards [`ProgressEvent`]s to SSE subscribers.
 #[derive(Clone)]
 pub struct ProgressReporter {
     bar: ProgressBar,
@@ -22,6 +25,9 @@ pub struct ProgressReporter {
     /// Only read in `#[cfg(test)]` methods.
     #[allow(dead_code)]
     hidden: bool,
+    /// Optional broadcast channel for SSE progress streaming.
+    /// When `None`, events are silently discarded.
+    broadcast_tx: Option<broadcast::Sender<ProgressEvent>>,
 }
 
 impl ProgressReporter {
@@ -35,7 +41,11 @@ impl ProgressReporter {
                 ProgressStyle::with_template("{spinner} {pos}/{len} pages  {wide_bar}  ETA {eta}")
                     .expect("invariant: progress bar template is valid"),
             );
-            Self { bar, hidden: false }
+            Self {
+                bar,
+                hidden: false,
+                broadcast_tx: None,
+            }
         }
     }
 
@@ -44,6 +54,27 @@ impl ProgressReporter {
         Self {
             bar: ProgressBar::hidden(),
             hidden: true,
+            broadcast_tx: None,
+        }
+    }
+
+    /// Attach a broadcast sender to forward [`ProgressEvent`]s to SSE subscribers.
+    ///
+    /// Returns a new `ProgressReporter` that wraps the existing one with the broadcast sink added.
+    pub fn with_broadcast(existing: Self, tx: broadcast::Sender<ProgressEvent>) -> Self {
+        Self {
+            broadcast_tx: Some(tx),
+            ..existing
+        }
+    }
+
+    /// Emit a [`ProgressEvent`] to the broadcast channel, if one is configured.
+    ///
+    /// Send errors (e.g. all receivers dropped) are silently ignored.
+    pub fn emit(&self, event: ProgressEvent) {
+        if let Some(tx) = &self.broadcast_tx {
+            // Ignore errors — receiver may have disconnected.
+            let _ = tx.send(event);
         }
     }
 
@@ -280,6 +311,29 @@ mod tests {
         );
     }
 
+    /// emit() forwards ProgressEvent to broadcast receiver when sink is wired.
+    #[test]
+    fn with_broadcast_emit_delivers_event_to_receiver() {
+        use tokio::sync::broadcast;
+        let (tx, mut rx) = broadcast::channel::<ProgressEvent>(16);
+        let reporter = ProgressReporter::with_broadcast(ProgressReporter::hidden(), tx);
+
+        reporter.emit(ProgressEvent::PageDone {
+            url: "https://example.com/".to_owned(),
+            score: 75,
+            queue_depth: 0,
+            pages_done: 1,
+        });
+
+        match rx.try_recv() {
+            Ok(ProgressEvent::PageDone { url, score, .. }) => {
+                assert_eq!(url, "https://example.com/");
+                assert_eq!(score, 75);
+            }
+            other => panic!("expected PageDone event, got {other:?}"),
+        }
+    }
+
     /// Clone is cheap and both clones are Send+Sync.
     #[test]
     fn reporter_clone_is_independent_view() {
@@ -365,7 +419,7 @@ mod tests {
                     "https://example.com/b",
                     40,
                     vec![Finding {
-                        check_id: "title.missing",
+                        check_id: "title.missing".to_owned(),
                         category: Category::Metadata,
                         severity: Severity::Critical,
                         message: "Missing title".to_owned(),

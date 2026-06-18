@@ -71,7 +71,7 @@ pub(crate) fn finding(
     message: impl Into<String>,
 ) -> Finding {
     Finding {
-        check_id,
+        check_id: check_id.to_owned(),
         category,
         severity,
         message: message.into(),

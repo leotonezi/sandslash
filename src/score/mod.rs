@@ -58,7 +58,7 @@ mod tests {
     #[test]
     fn critical_metadata_penalty_reduces_score() {
         let findings = vec![Finding {
-            check_id: "title.missing",
+            check_id: "title.missing".to_owned(),
             category: Category::Metadata,
             severity: Severity::Critical,
             message: "no title".into(),
@@ -80,7 +80,7 @@ mod tests {
         let r2 = score_page(
             url(),
             vec![Finding {
-                check_id: "title.missing",
+                check_id: "title.missing".to_owned(),
                 category: Category::Metadata,
                 severity: Severity::Critical,
                 message: "no title".into(),
@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn penalty_clamped_at_zero() {
         let findings = vec![Finding {
-            check_id: "title.missing",
+            check_id: "title.missing".to_owned(),
             category: Category::Metadata,
             severity: Severity::Critical,
             message: "no title".into(),

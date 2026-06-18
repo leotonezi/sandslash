@@ -107,7 +107,7 @@ mod tests {
     }
 
     fn ids(findings: &[Finding]) -> Vec<&str> {
-        findings.iter().map(|f| f.check_id).collect()
+        findings.iter().map(|f| f.check_id.as_str()).collect()
     }
 
     // --- happy path: self-referential canonical ---

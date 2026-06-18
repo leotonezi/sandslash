@@ -15,6 +15,7 @@ use crate::report::ProgressReporter;
 use crate::report::json::write_json;
 use crate::report::terminal::{TerminalOpts, write_terminal};
 use crate::score::{score_page, score_site};
+use crate::server::progress::ProgressEvent;
 
 pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     let qps = NonZeroU32::new(config.rate_per_host)
@@ -197,6 +198,154 @@ pub async fn run(config: CrawlConfig) -> anyhow::Result<AuditReport> {
     Ok(report)
 }
 
+/// Run the audit pipeline from the server path.
+///
+/// Behaves identically to [`run`] for depth 0, but:
+/// - Uses a `ProgressReporter` wired with the broadcast sender so workers emit
+///   `PageDone` events to SSE subscribers.
+/// - Does NOT call `emit_report` — the caller (route handler) sends the final
+///   `Done` event with the full `AuditReport`.
+///
+/// Depth > 0 requires Redis (same as `run`).
+pub async fn run_for_server(
+    config: CrawlConfig,
+    tx: tokio::sync::broadcast::Sender<ProgressEvent>,
+) -> crate::error::Result<AuditReport> {
+    let qps = NonZeroU32::new(config.rate_per_host)
+        .unwrap_or_else(|| NonZeroU32::new(1).expect("invariant: 1 != 0"));
+    let rate_limiter = Arc::new(HostRateLimiter::new(qps));
+    let fetcher = Arc::new(Fetcher::new(&config, Arc::clone(&rate_limiter))?);
+    let robots_cache = Arc::new(RobotsCache::new());
+
+    let reporter = ProgressReporter::with_broadcast(ProgressReporter::hidden(), tx);
+
+    let page_reports: Vec<PageReport> = if config.depth == 0 {
+        // ── Single-page path (no Redis dependency) ────────────────────────
+
+        // Robots gating for single-page path.
+        if config.respect_robots {
+            let allowed = robots_cache
+                .allowed(&config.root, &fetcher, &config.user_agent, &rate_limiter)
+                .await;
+            if !allowed {
+                tracing::debug!(url = %config.root, "robots.txt disallowed root URL; returning empty report");
+                let report = AuditReport {
+                    root: config.root.clone(),
+                    pages: vec![],
+                    site_score: 100,
+                    crawled_at: Utc::now().to_rfc3339(),
+                };
+                return Ok(report);
+            }
+        }
+
+        let page_data = match fetcher.fetch(&config.root).await {
+            Ok(pd) => pd,
+            Err(SeoError::RedirectLoop { url, hops }) => {
+                // For the server path, convert to a synthetic report and return
+                let parsed_url: Url = Url::parse(&url)?;
+                let redirect_chain = vec![parsed_url.clone(); hops];
+                let synthetic = PageData {
+                    url: parsed_url.clone(),
+                    status: 0,
+                    redirect_chain,
+                    html: String::new(),
+                    headers: Headers::default(),
+                    depth: 0,
+                };
+                let loop_finding = Finding {
+                    check_id: "redirects.loop".to_owned(),
+                    category: Category::Links,
+                    severity: Severity::Critical,
+                    message: format!("Redirect loop detected at {url} after {hops} hops"),
+                    penalty: 40,
+                };
+                let page_report = score_page(synthetic.url, vec![loop_finding]);
+                let site_score = score_site(std::slice::from_ref(&page_report));
+                return Ok(AuditReport {
+                    root: config.root.clone(),
+                    pages: vec![page_report],
+                    site_score,
+                    crawled_at: Utc::now().to_rfc3339(),
+                });
+            }
+            Err(e) => return Err(e),
+        };
+
+        let mut findings: Vec<Finding> = {
+            let html = page_data.html.clone();
+            let page_snap = page_data.clone();
+            tokio::task::spawn_blocking(move || {
+                let dom = Dom::parse(&html);
+                crate::audit::page_auditors()
+                    .iter()
+                    .flat_map(|a| a.audit(&page_snap, &dom))
+                    .collect::<Vec<_>>()
+            })
+            .await
+            .map_err(|e| SeoError::Config(format!("spawn_blocking panicked: {e}")))?
+        };
+
+        let ctx = AuditContext {
+            config: Arc::new(config.clone()),
+            fetcher: Arc::clone(&fetcher),
+        };
+        for auditor in crate::audit::site_auditors() {
+            let mut f = auditor.audit(&page_data, &ctx).await;
+            findings.append(&mut f);
+        }
+
+        let page_report = score_page(page_data.url.clone(), findings);
+        // Emit PageDone for the single page.
+        reporter.emit(ProgressEvent::PageDone {
+            url: page_data.url.to_string(),
+            score: page_report.score,
+            queue_depth: 0,
+            pages_done: 1,
+        });
+        vec![page_report]
+    } else {
+        // ── Multi-page crawler path ───────────────────────────────────────
+        let redis_url = config
+            .redis_url
+            .as_deref()
+            .ok_or_else(|| SeoError::Config("--redis-url is required when depth > 0".into()))?;
+
+        static JOB_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let seq = JOB_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let job_id = format!(
+            "seo-rs-srv-{}-{}-{}",
+            std::process::id(),
+            Utc::now().timestamp_millis(),
+            seq,
+        );
+        let frontier = crate::crawler::Frontier::new(redis_url, job_id).await?;
+
+        let page_auditors = Arc::new(crate::audit::page_auditors());
+        let site_auditors = Arc::new(crate::audit::site_auditors());
+
+        crate::crawler::run_crawl(
+            Arc::new(config.clone()),
+            Arc::clone(&fetcher),
+            frontier,
+            page_auditors,
+            site_auditors,
+            Arc::clone(&rate_limiter),
+            Arc::clone(&robots_cache),
+            reporter,
+        )
+        .await?
+    };
+
+    let site_score = score_site(&page_reports);
+    Ok(AuditReport {
+        root: config.root.clone(),
+        pages: page_reports,
+        site_score,
+        crawled_at: Utc::now().to_rfc3339(),
+    })
+}
+
 fn handle_redirect_loop(
     url: String,
     hops: usize,
@@ -216,7 +365,7 @@ fn handle_redirect_loop(
     };
 
     let loop_finding = Finding {
-        check_id: "redirects.loop",
+        check_id: "redirects.loop".to_owned(),
         category: Category::Links,
         severity: Severity::Critical,
         message: format!("Redirect loop detected at {url} after {hops} hops"),

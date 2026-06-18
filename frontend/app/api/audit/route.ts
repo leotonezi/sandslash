@@ -92,6 +92,32 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  // ── Streaming path: proxy to Rust HTTP server ────────────────────────────
+  const rustServerUrl = process.env.NEXT_PUBLIC_SEO_RS_URL;
+  if (rustServerUrl) {
+    try {
+      const upstream = await fetch(`${rustServerUrl}/api/audits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, depth: 0 }),
+      });
+      const data = (await upstream.json()) as { job_id?: string; error?: string };
+      if (!upstream.ok || !data.job_id) {
+        return Response.json(
+          { error: data.error ?? `Rust server returned ${upstream.status}` },
+          { status: upstream.status }
+        );
+      }
+      return Response.json({ job_id: data.job_id });
+    } catch (err) {
+      return Response.json(
+        { error: `Failed to reach Rust server: ${String(err)}` },
+        { status: 502 }
+      );
+    }
+  }
+
+  // ── Shell-out path (fallback when NEXT_PUBLIC_SEO_RS_URL is unset) ───────
   const tempPath = path.join(os.tmpdir(), `${randomUUID()}.json`);
   const binPath =
     process.env.SEO_RS_BIN ??
@@ -103,7 +129,7 @@ export async function POST(request: Request): Promise<Response> {
       (resolve) => {
         const stderrChunks: Buffer[] = [];
 
-        const child = spawn(binPath, [url, "--depth", "0", "-o", tempPath], {
+        const child = spawn(binPath, ["audit", url, "--depth", "0", "-o", tempPath], {
           stdio: ["ignore", "ignore", "pipe"],
         });
 

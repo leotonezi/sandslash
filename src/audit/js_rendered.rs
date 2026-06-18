@@ -90,7 +90,7 @@ mod tests {
     }
 
     fn ids(findings: &[Finding]) -> Vec<&str> {
-        findings.iter().map(|f| f.check_id).collect()
+        findings.iter().map(|f| f.check_id.as_str()).collect()
     }
 
     const EMPTY_ROOT: &str = include_str!("../../tests/fixtures/js_rendered_empty_root.html");
