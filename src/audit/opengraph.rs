@@ -76,7 +76,7 @@ mod tests {
     }
 
     fn ids(findings: &[Finding]) -> Vec<&str> {
-        findings.iter().map(|f| f.check_id).collect()
+        findings.iter().map(|f| f.check_id.as_str()).collect()
     }
 
     const ALL_TAGS_HTML: &str = include_str!("../../tests/fixtures/opengraph_all.html");

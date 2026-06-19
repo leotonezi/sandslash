@@ -5,8 +5,58 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
+import { saveAuditRun } from "@/lib/history";
+import type { AuditReport } from "@/app/components/ReportView.types";
+
+const PROTECTION_ENABLED = process.env.LIVE_DEMO_RATE_LIMIT_PROTECTION === "true";
+const MAX_CONCURRENT = 3;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 5;
+
+let activeAudits = 0;
+
+interface RateEntry {
+  count: number;
+  windowStart: number;
+}
+const ipRateMap = new Map<string, RateEntry>();
+
+function getClientIp(request: Request): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  );
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipRateMap.get(ip);
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    ipRateMap.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return true;
+  entry.count++;
+  return false;
+}
 
 export async function POST(request: Request): Promise<Response> {
+  const ip = getClientIp(request);
+
+  if (PROTECTION_ENABLED && isRateLimited(ip)) {
+    return Response.json(
+      { error: "Too many requests. Try again in a minute." },
+      { status: 429 }
+    );
+  }
+
+  if (PROTECTION_ENABLED && activeAudits >= MAX_CONCURRENT) {
+    return Response.json(
+      { error: "Server busy. Try again in a moment." },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -42,17 +92,44 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  // ── Streaming path: proxy to Rust HTTP server ────────────────────────────
+  const rustServerUrl = process.env.NEXT_PUBLIC_SEO_RS_URL;
+  if (rustServerUrl) {
+    try {
+      const upstream = await fetch(`${rustServerUrl}/api/audits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, depth: 0 }),
+      });
+      const data = (await upstream.json()) as { job_id?: string; error?: string };
+      if (!upstream.ok || !data.job_id) {
+        return Response.json(
+          { error: data.error ?? `Rust server returned ${upstream.status}` },
+          { status: upstream.status }
+        );
+      }
+      return Response.json({ job_id: data.job_id });
+    } catch (err) {
+      return Response.json(
+        { error: `Failed to reach Rust server: ${String(err)}` },
+        { status: 502 }
+      );
+    }
+  }
+
+  // ── Shell-out path (fallback when NEXT_PUBLIC_SEO_RS_URL is unset) ───────
   const tempPath = path.join(os.tmpdir(), `${randomUUID()}.json`);
   const binPath =
     process.env.SEO_RS_BIN ??
     path.resolve(process.cwd(), "../target/release/sandslash");
 
+  activeAudits++;
   try {
     const result = await new Promise<{ exitCode: number; stderr: string }>(
       (resolve) => {
         const stderrChunks: Buffer[] = [];
 
-        const child = spawn(binPath, [url, "-o", tempPath], {
+        const child = spawn(binPath, ["audit", url, "--depth", "0", "-o", tempPath], {
           stdio: ["ignore", "ignore", "pipe"],
         });
 
@@ -113,8 +190,15 @@ export async function POST(request: Request): Promise<Response> {
       );
     }
 
+    try {
+      await saveAuditRun(report as AuditReport);
+    } catch (err) {
+      console.error("[audit] persistence failed:", err);
+    }
+
     return Response.json({ report });
   } finally {
+    activeAudits--;
     try {
       fs.unlinkSync(tempPath);
     } catch {

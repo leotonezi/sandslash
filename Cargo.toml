@@ -7,7 +7,7 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "stream", "json"] }
 scraper = "0.22"
 url = { version = "2", features = ["serde"] }
 redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
@@ -31,6 +31,10 @@ quick-xml = "0.37"
 nonzero_ext = "0.3"
 futures = "0.3"
 dotenvy = "0.15"
+axum = "0.7"
+tokio-stream = { version = "0.1", features = ["sync"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 
 [dev-dependencies]
 wiremock = "0.6"

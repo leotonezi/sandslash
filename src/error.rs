@@ -23,6 +23,10 @@ pub enum SeoError {
     RedirectLoop { url: String, hops: usize },
     #[error("Robots.txt disallows {0}")]
     RobotsDisallowed(String),
+    #[error("server error: {0}")]
+    Server(String),
+    #[error("job not found: {0}")]
+    JobNotFound(String),
 }
 
 pub type Result<T> = std::result::Result<T, SeoError>;

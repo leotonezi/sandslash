@@ -30,3 +30,16 @@ export interface AuditReport {
   site_score: number;
   crawled_at: string;
 }
+
+export interface AuditRunSummary {
+  id: number;
+  host: string;
+  root_url: string;
+  site_score: number;
+  crawled_at: string;
+}
+
+export interface RegressionResult {
+  regressed: boolean;
+  deltaPoints?: number;
+}

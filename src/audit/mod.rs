@@ -1,3 +1,4 @@
+pub mod canonical;
 pub mod headings;
 pub mod https;
 pub mod js_rendered;
@@ -44,6 +45,7 @@ pub struct AuditContext {
 pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
     vec![
         Box::new(metadata::MetadataAuditor),
+        Box::new(canonical::CanonicalAuditor),
         Box::new(headings::HeadingsAuditor),
         Box::new(https::HttpsAuditor),
         Box::new(opengraph::OpengraphAuditor),
@@ -69,7 +71,7 @@ pub(crate) fn finding(
     message: impl Into<String>,
 ) -> Finding {
     Finding {
-        check_id,
+        check_id: check_id.to_owned(),
         category,
         severity,
         message: message.into(),

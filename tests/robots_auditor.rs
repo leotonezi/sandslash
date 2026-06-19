@@ -95,7 +95,7 @@ async fn robots_disallow_all_emits_critical() {
 
     let findings = RobotsAuditor.audit(&page, &ctx).await;
 
-    let ids: Vec<&str> = findings.iter().map(|f| f.check_id).collect();
+    let ids: Vec<&str> = findings.iter().map(|f| f.check_id.as_str()).collect();
     assert!(
         ids.contains(&"robots.disallow-all"),
         "expected robots.disallow-all, got: {findings:?}"

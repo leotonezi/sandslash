@@ -1,4 +1,5 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use sandslash::config::CrawlConfig;
@@ -7,6 +8,20 @@ use sandslash::error::{Result, SeoError};
 #[derive(Parser, Debug)]
 #[command(name = "sandslash", version, about = "SEO audit CLI")]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Audit a URL (single-page or crawl).
+    Audit(AuditArgs),
+    /// Start the HTTP server for SSE-streamed audits.
+    Serve(ServeArgs),
+}
+
+#[derive(Parser, Debug)]
+pub struct AuditArgs {
     /// Target URL to audit.
     pub url: String,
 
@@ -72,7 +87,14 @@ pub struct Cli {
     pub verbose: bool,
 }
 
-impl Cli {
+#[derive(Parser, Debug)]
+pub struct ServeArgs {
+    /// Address to bind the HTTP server to.
+    #[arg(long, default_value = "127.0.0.1:7878")]
+    pub bind: SocketAddr,
+}
+
+impl AuditArgs {
     pub fn into_config(self) -> Result<CrawlConfig> {
         let root = self.url.parse().map_err(SeoError::Url)?;
         Ok(CrawlConfig {
@@ -95,5 +117,38 @@ impl Cli {
             output_json: self.output,
             check_external_links: self.check_external_links,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn audit_subcommand_parses_url() {
+        let cli =
+            Cli::try_parse_from(["sandslash", "audit", "https://example.com", "--depth", "0"])
+                .expect("audit subcommand must parse");
+        assert!(matches!(cli.command, Command::Audit(_)));
+    }
+
+    #[test]
+    fn serve_subcommand_parses_bind() {
+        let cli = Cli::try_parse_from(["sandslash", "serve", "--bind", "127.0.0.1:7878"])
+            .expect("serve subcommand must parse");
+        assert!(matches!(cli.command, Command::Serve(_)));
+    }
+
+    #[test]
+    fn audit_into_config_sets_root_url() {
+        let cli =
+            Cli::try_parse_from(["sandslash", "audit", "https://example.com/", "--depth", "0"])
+                .expect("must parse");
+        if let Command::Audit(args) = cli.command {
+            let config = args.into_config().expect("must build config");
+            assert_eq!(config.root.as_str(), "https://example.com/");
+            assert_eq!(config.depth, 0);
+        }
     }
 }

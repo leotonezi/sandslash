@@ -31,6 +31,7 @@ use crate::{
     parser::{Dom, links::discover_links},
     report::ProgressReporter,
     score::score_page,
+    server::progress::ProgressEvent,
 };
 
 use super::{Frontier, RobotsCache};
@@ -69,6 +70,8 @@ pub async fn spawn_crawl_workers(
     // Root URL counts as page 1 — store 1 before workers start so child
     // enqueue gate starts at the right offset.
     let pages_fetched: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(1));
+    // Separate counter tracking completed (scored + sent) pages across all workers.
+    let pages_done: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<PageReport>();
 
     // ── 3. Spawn workers ─────────────────────────────────────────────────────
@@ -81,6 +84,7 @@ pub async fn spawn_crawl_workers(
         let page_auditors = Arc::clone(&page_auditors);
         let site_auditors = Arc::clone(&site_auditors);
         let pages_fetched = Arc::clone(&pages_fetched);
+        let pages_done = Arc::clone(&pages_done);
         let rate_limiter = Arc::clone(&rate_limiter);
         let robots_cache = Arc::clone(&robots_cache);
         // Each worker holds its own tx clone; they are all dropped when the
@@ -96,6 +100,7 @@ pub async fn spawn_crawl_workers(
                 page_auditors,
                 site_auditors,
                 pages_fetched,
+                pages_done,
                 rate_limiter,
                 robots_cache,
                 tx,
@@ -182,6 +187,7 @@ async fn worker_loop(
     page_auditors: Arc<Vec<Box<dyn PageAuditor>>>,
     site_auditors: Arc<Vec<Box<dyn SiteAuditor>>>,
     pages_fetched: Arc<AtomicUsize>,
+    pages_done: Arc<AtomicUsize>,
     rate_limiter: Arc<HostRateLimiter>,
     robots_cache: Arc<RobotsCache>,
     tx: tokio::sync::mpsc::UnboundedSender<PageReport>,
@@ -302,10 +308,21 @@ async fn worker_loop(
 
         // ── Score & send ─────────────────────────────────────────────────────
         let report = score_page(url.clone(), findings);
+        let page_score = report.score;
         // Ignore send errors — receiver may have dropped after a panic.
         let _ = tx.send(report);
+        // Advance the completed-pages counter.
+        let done_count = pages_done.fetch_add(1, Ordering::Relaxed) + 1;
         // One page report delivered — advance the progress bar.
         reporter.inc_done();
+        // Emit SSE PageDone event if a broadcast sender is wired in.
+        // Queue depth is approximate (we don't hold the frontier lock here).
+        reporter.emit(ProgressEvent::PageDone {
+            url: url.to_string(),
+            score: page_score,
+            queue_depth: 0,
+            pages_done: done_count,
+        });
 
         // ── Enqueue children ─────────────────────────────────────────────────
         // Count discovered children for the total, regardless of whether they

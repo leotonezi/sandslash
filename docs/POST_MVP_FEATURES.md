@@ -6,6 +6,14 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 
 ## Platform Infrastructure
 
+### Live Demo Deployment (Railway / Fly.io)
+- Dockerfile: multi-stage build — Rust binary + Next.js frontend in one image
+- Frontend API route shells out to binary (current approach, zero code changes)
+- Single Railway/Fly.io service, `SEO_RS_BIN=/usr/local/bin/sandslash`
+- Redis add-on for multi-page crawl support (`--redis-url` from env)
+- Gives a public demo URL for portfolio / recruiters
+- **Approach:** Option 1 (shell-out) now; Option 2 (axum HTTP API) when SSE real-time progress is needed
+
 ### Audit History + Trends
 - Store reports in Postgres (one row per audit run per URL)
 - Show score over time per site in the UI
@@ -21,7 +29,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Per-site audit history, last crawl status, average score
 - **Risk:** same scope creep as scheduled re-audits; only makes sense after Postgres persistence exists
 
-### Real-time Crawl Progress
+### ✓ Real-time Crawl Progress
 - SSE or WebSockets from crawl engine → browser
 - Currently the UI blocks until the binary exits (temp file approach)
 - Show pages crawled, queue depth, current score as crawl runs
@@ -64,7 +72,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 
 ## Missing — Worth Adding
 
-### Canonical URL Audit
+### ✓ Canonical URL Audit
 - Check `<link rel="canonical">` is present, self-referential, and consistent across redirect chains
 - Common misconfiguration, pure HTML parsing, zero external deps
 
@@ -92,16 +100,17 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 
 ```
 1. Finish IMPLEMENTATION.md phases 2–4 (crawler is the unlock)
-2. Benchmark suite (criterion) — needed before performance claims
-3. Canonical URL audit — pure HTML, zero deps, high impact
-4. Postgres persistence + audit history UI
-5. SSE real-time progress in UI
-6. --diff mode (natural once history exists)
-7. Structured data / Schema.org validation
-8. hreflang checks
-9. Page speed hints (static)
-10. Scheduled re-audits (defer — SaaS scope, freezes Rust core)
-11. Multi-site management (depends on #4)
-12. Core Web Vitals — isolate behind --cwv flag, Node.js dep
-13. Social preview renderer (low priority — low differentiation)
+2. ✓ Benchmark suite (criterion) — needed before performance claims
+3. Live demo deployment (Railway/Fly.io) — public URL for portfolio
+4. ✓ Canonical URL audit — pure HTML, zero deps, high impact
+5. Postgres persistence + audit history UI
+6. ✓ SSE real-time progress in UI
+7. --diff mode (natural once history exists)
+8. Structured data / Schema.org validation
+9. hreflang checks
+10. Page speed hints (static)
+11. Scheduled re-audits (defer — SaaS scope, freezes Rust core)
+12. Multi-site management (depends on #5)
+13. Core Web Vitals — isolate behind --cwv flag, Node.js dep
+14. Social preview renderer (low priority — low differentiation)
 ```
