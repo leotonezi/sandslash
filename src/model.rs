@@ -60,16 +60,16 @@ impl Category {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Finding {
-    pub check_id: &'static str,
+    pub check_id: String,
     pub category: Category,
     pub severity: Severity,
     pub message: String,
     pub penalty: u8,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageReport {
     pub url: Url,
     pub findings: Vec<Finding>,
@@ -77,7 +77,7 @@ pub struct PageReport {
     pub score: u8,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditReport {
     pub root: Url,
     pub pages: Vec<PageReport>,

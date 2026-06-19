@@ -29,7 +29,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Per-site audit history, last crawl status, average score
 - **Risk:** same scope creep as scheduled re-audits; only makes sense after Postgres persistence exists
 
-### Real-time Crawl Progress
+### ✓ Real-time Crawl Progress
 - SSE or WebSockets from crawl engine → browser
 - Currently the UI blocks until the binary exits (temp file approach)
 - Show pages crawled, queue depth, current score as crawl runs
@@ -104,7 +104,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 3. Live demo deployment (Railway/Fly.io) — public URL for portfolio
 4. ✓ Canonical URL audit — pure HTML, zero deps, high impact
 5. Postgres persistence + audit history UI
-6. SSE real-time progress in UI
+6. ✓ SSE real-time progress in UI
 7. --diff mode (natural once history exists)
 8. Structured data / Schema.org validation
 9. hreflang checks

@@ -65,7 +65,7 @@ mod tests {
     }
 
     fn ids(findings: &[Finding]) -> Vec<&str> {
-        findings.iter().map(|f| f.check_id).collect()
+        findings.iter().map(|f| f.check_id.as_str()).collect()
     }
 
     const MISSING_ALT: &str = include_str!("../../tests/fixtures/images_missing_alt.html");

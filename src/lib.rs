@@ -10,3 +10,4 @@ pub mod parser;
 pub mod pipeline;
 pub mod report;
 pub mod score;
+pub mod server;
