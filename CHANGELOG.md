@@ -4,11 +4,34 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.8.0] - 2026-06-19
+
+### Bug Fixes
+
+- **server**: Replay terminal event for late SSE subscribers ([1fbf819](https://github.com/leotonezi/sandslash/commit/1fbf81938e86023ffe75ebfd5752f1d33f23f5f0))
+
+### Chores
+
+- **docker**: Use rust:1-bookworm-slim to reduce builder layer size ([2f09972](https://github.com/leotonezi/sandslash/commit/2f099729b3c9ac92232fa591175d3ffe2bbba303))
+
+### Documentation
+
+- Add consistent hashing engineering note ([b4292f7](https://github.com/leotonezi/sandslash/commit/b4292f7a20c481c271adbab88217a7567e550af7))
+
+### Features
+
+- **audit**: Add CanonicalAuditor for canonical URL checks ([a20a906](https://github.com/leotonezi/sandslash/commit/a20a906544a626f0e6e9794401f53aa792f8e5d8))
+- **deploy**: Add single-image Railway deployment for live demo ([d6398ad](https://github.com/leotonezi/sandslash/commit/d6398adc61628fee266b0899c2f039ba3adf13b0))
+- **api**: Add rate limiting behind LIVE_DEMO_RATE_LIMIT_PROTECTION env var ([20bd46f](https://github.com/leotonezi/sandslash/commit/20bd46f47b665c2213306aa798ef67bc76e85400))
+- **frontend**: POST_MVP.5 — Postgres persistence and audit history UI ([874ff5d](https://github.com/leotonezi/sandslash/commit/874ff5dd410b0fa951ecf9eed5b103a5e73ee79d))
+- **server**: POST_MVP.6 — SSE real-time crawl progress ([b7bd09e](https://github.com/leotonezi/sandslash/commit/b7bd09e9042a8bb6b11d51ad7c55a9aa76583b35))
+
 ## [0.7.3] - 2026-06-09
 
 ### Chores
 
 - Ignore .claude/worktrees/ ([396e627](https://github.com/leotonezi/sandslash/commit/396e627fae8d95ec36a62f42c046612a9fe0ad37))
+- Release sandslash version 0.7.3 ([11a32da](https://github.com/leotonezi/sandslash/commit/11a32da67530231d89ad9bc570cb244a52f77bfb))
 
 ### Documentation
 
@@ -201,6 +224,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.8.0]: https://github.com/leotonezi/sandslash/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/leotonezi/sandslash/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/leotonezi/sandslash/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/leotonezi/sandslash/compare/v0.7.0...v0.7.1
