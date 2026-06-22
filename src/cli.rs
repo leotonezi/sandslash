@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use sandslash::config::CrawlConfig;
+use sandslash::diff::OutputFormat;
 use sandslash::error::{Result, SeoError};
 
 #[derive(Parser, Debug)]
@@ -18,6 +19,8 @@ pub enum Command {
     Audit(AuditArgs),
     /// Start the HTTP server for SSE-streamed audits.
     Serve(ServeArgs),
+    /// Compare two AuditReport JSON files and print score deltas.
+    Diff(DiffArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -94,6 +97,23 @@ pub struct ServeArgs {
     pub bind: SocketAddr,
 }
 
+#[derive(Parser, Debug)]
+pub struct DiffArgs {
+    /// Path to the "before" AuditReport JSON file.
+    pub before: PathBuf,
+
+    /// Path to the "after" AuditReport JSON file.
+    pub after: PathBuf,
+
+    /// Output format (text or json). Default: text.
+    #[arg(short = 'f', long)]
+    pub output: Option<OutputFormat>,
+
+    /// Disable ANSI color codes (also honors NO_COLOR env var).
+    #[arg(long)]
+    pub no_color: bool,
+}
+
 impl AuditArgs {
     pub fn into_config(self) -> Result<CrawlConfig> {
         let root = self.url.parse().map_err(SeoError::Url)?;
@@ -149,6 +169,28 @@ mod tests {
             let config = args.into_config().expect("must build config");
             assert_eq!(config.root.as_str(), "https://example.com/");
             assert_eq!(config.depth, 0);
+        }
+    }
+
+    #[test]
+    fn diff_subcommand_parses_paths() {
+        let cli = Cli::try_parse_from([
+            "sandslash",
+            "diff",
+            "before.json",
+            "after.json",
+            "--output",
+            "json",
+            "--no-color",
+        ])
+        .expect("diff subcommand must parse");
+        if let Command::Diff(args) = cli.command {
+            assert_eq!(args.before.as_os_str(), "before.json");
+            assert_eq!(args.after.as_os_str(), "after.json");
+            assert!(matches!(args.output, Some(OutputFormat::Json)));
+            assert!(args.no_color);
+        } else {
+            panic!("expected Command::Diff");
         }
     }
 }

@@ -46,6 +46,11 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!(bind = %args.bind, "starting HTTP server");
             sandslash::server::serve(args.bind).await?;
         }
+
+        cli::Command::Diff(args) => {
+            sandslash::diff::run(args.before, args.after, args.output, args.no_color)
+                .context("diff failed")?;
+        }
     }
 
     Ok(())

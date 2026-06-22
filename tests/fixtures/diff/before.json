@@ -1,0 +1,49 @@
+{
+  "root": "https://example.com/",
+  "site_score": 65,
+  "crawled_at": "2026-01-01T00:00:00Z",
+  "pages": [
+    {
+      "url": "https://example.com/",
+      "score": 70,
+      "findings": [],
+      "category_scores": {
+        "Metadata": 70,
+        "SocialTags": 70,
+        "Structure": 70,
+        "Links": 70,
+        "Media": 70,
+        "Crawlability": 70,
+        "Security": 70
+      }
+    },
+    {
+      "url": "https://example.com/about",
+      "score": 60,
+      "findings": [],
+      "category_scores": {
+        "Metadata": 60,
+        "SocialTags": 60,
+        "Structure": 60,
+        "Links": 60,
+        "Media": 60,
+        "Crawlability": 60,
+        "Security": 60
+      }
+    },
+    {
+      "url": "https://example.com/removed",
+      "score": 50,
+      "findings": [],
+      "category_scores": {
+        "Metadata": 50,
+        "SocialTags": 50,
+        "Structure": 50,
+        "Links": 50,
+        "Media": 50,
+        "Crawlability": 50,
+        "Security": 50
+      }
+    }
+  ]
+}

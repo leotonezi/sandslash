@@ -3,6 +3,7 @@
 pub mod audit;
 pub mod config;
 pub mod crawler;
+pub mod diff;
 pub mod error;
 pub mod fetcher;
 pub mod model;
