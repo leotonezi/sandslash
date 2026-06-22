@@ -4,6 +4,12 @@ All notable changes to sandslash are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1.0 breaking changes bump the minor version.
 
+## [0.9.0] - 2026-06-22
+
+### Features
+
+- **diff**: POST_MVP.7 — --diff mode for comparing audit JSON reports ([2b3925a](https://github.com/leotonezi/sandslash/commit/2b3925ab213e3e50699902568e4bdea86f8983dd))
+
 ## [0.8.0] - 2026-06-19
 
 ### Bug Fixes
@@ -13,6 +19,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 ### Chores
 
 - **docker**: Use rust:1-bookworm-slim to reduce builder layer size ([2f09972](https://github.com/leotonezi/sandslash/commit/2f099729b3c9ac92232fa591175d3ffe2bbba303))
+- Release sandslash version 0.8.0 ([7750396](https://github.com/leotonezi/sandslash/commit/77503969061343be09539bb2b3828e7c3b22bf57))
 
 ### Documentation
 
@@ -224,6 +231,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html) — pre-1
 - Add Next.js 14 audit UI (phase 2, step 2.3-ui) ([fd457ad](https://github.com/leotonezi/sandslash/commit/fd457ad8be0a9c8b5322a04e104f2317207c8c24))
 - Implement manual redirect handling with loop detection (phase 2, step 2.3) ([3205025](https://github.com/leotonezi/sandslash/commit/320502521b7a18a1209db7d1bc3d265d06a9c477))
 
+[0.9.0]: https://github.com/leotonezi/sandslash/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/leotonezi/sandslash/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/leotonezi/sandslash/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/leotonezi/sandslash/compare/v0.7.1...v0.7.2
