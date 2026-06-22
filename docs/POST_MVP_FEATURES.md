@@ -81,7 +81,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Measure audit pipeline throughput (pages/sec)
 - Required before making any performance claims; significant gap for senior showcase
 
-### `--diff` Mode
+### ✓ `--diff` Mode
 - Compare two audit JSON reports and emit score delta per page/category
 - Natural extension once Postgres or file-based history exists
 - High demo value: shows regressions at a glance
@@ -103,9 +103,9 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 2. ✓ Benchmark suite (criterion) — needed before performance claims
 3. Live demo deployment (Railway/Fly.io) — public URL for portfolio
 4. ✓ Canonical URL audit — pure HTML, zero deps, high impact
-5. Postgres persistence + audit history UI
+5. ✓ Postgres persistence + audit history UI
 6. ✓ SSE real-time progress in UI
-7. --diff mode (natural once history exists)
+7. ✓ --diff mode (natural once history exists)
 8. Structured data / Schema.org validation
 9. hreflang checks
 10. Page speed hints (static)
