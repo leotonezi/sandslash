@@ -33,6 +33,10 @@ static SEL_EMBED_SRC: LazyLock<Selector> =
 static SEL_OBJECT_DATA: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("object[data]").expect("invariant: valid CSS selector"));
 
+static SEL_JSON_LD: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("script[type='application/ld+json']").expect("invariant: valid CSS selector")
+});
+
 /// Content-bearing semantic tags used for JS-rendered detection.
 /// Covers: p, article, section, main, li, h1–h6.
 static SEL_CONTENT_TAGS: LazyLock<Selector> = LazyLock::new(|| {
@@ -185,6 +189,19 @@ impl Dom {
         );
 
         urls
+    }
+
+    /// Raw text content of every `<script type="application/ld+json">` element,
+    /// in document order.
+    ///
+    /// Whitespace-only blocks are skipped. Returns an empty `Vec` when none are
+    /// present. JSON parsing is intentionally left to the caller.
+    pub fn json_ld_blocks(&self) -> Vec<String> {
+        self.html
+            .select(&SEL_JSON_LD)
+            .map(|el| el.text().collect::<String>())
+            .filter(|s| !s.trim().is_empty())
+            .collect()
     }
 
     /// Byte length of visible text in the document.
@@ -362,5 +379,50 @@ mod tests {
             dom.resource_urls()
                 .contains(&"http://object.example.com/file.pdf".to_owned())
         );
+    }
+
+    #[test]
+    fn json_ld_blocks_empty_when_none_present() {
+        let dom = Dom::parse("<html><head></head><body></body></html>");
+        assert!(dom.json_ld_blocks().is_empty());
+    }
+
+    #[test]
+    fn json_ld_blocks_single_block() {
+        let dom = Dom::parse(
+            r#"<html><head>
+                <script type="application/ld+json">{"@type":"WebPage"}</script>
+            </head><body></body></html>"#,
+        );
+        let blocks = dom.json_ld_blocks();
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].trim(), r#"{"@type":"WebPage"}"#);
+    }
+
+    #[test]
+    fn json_ld_blocks_multiple_blocks_document_order() {
+        let dom = Dom::parse(
+            r#"<html><head>
+                <script type="application/ld+json">{"@type":"WebPage"}</script>
+                <script type="application/ld+json">{"@type":"Organization"}</script>
+            </head><body></body></html>"#,
+        );
+        let blocks = dom.json_ld_blocks();
+        assert_eq!(blocks.len(), 2);
+        assert!(blocks[0].contains("WebPage"));
+        assert!(blocks[1].contains("Organization"));
+    }
+
+    #[test]
+    fn json_ld_blocks_skips_whitespace_only_blocks() {
+        let dom = Dom::parse(
+            r#"<html><head>
+                <script type="application/ld+json">   </script>
+                <script type="application/ld+json">{"@type":"WebPage"}</script>
+            </head><body></body></html>"#,
+        );
+        let blocks = dom.json_ld_blocks();
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].contains("WebPage"));
     }
 }
