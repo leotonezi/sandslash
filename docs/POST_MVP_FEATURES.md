@@ -44,7 +44,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 - Add `Category::Performance` to the scoring model
 - **Risk:** PageSpeed API requires a key + has rate limits; `@lhci/cli` requires a Node.js runtime — both are external deps that break in CI/prod; CWV measures real-user perf, not HTML quality, so it's a different tool category; if `Category::Performance` is added, CWV absence silently zeros the score — isolate behind a `--cwv` flag if built
 
-### Structured Data / Schema.org Validation
+### ✓ Structured Data / Schema.org Validation
 - Parse `<script type="application/ld+json">` blocks
 - Validate against schema.org vocabulary (Article, Product, BreadcrumbList, FAQ, etc.)
 - Flag malformed JSON-LD, missing required fields, invalid types
@@ -106,7 +106,7 @@ Features beyond the CLI plan (`IMPLEMENTATION.md`) needed to make seo-rs a robus
 5. ✓ Postgres persistence + audit history UI
 6. ✓ SSE real-time progress in UI
 7. ✓ --diff mode (natural once history exists)
-8. Structured data / Schema.org validation
+8. ✓ Structured data / Schema.org validation
 9. hreflang checks
 10. Page speed hints (static)
 11. Scheduled re-audits (defer — SaaS scope, freezes Rust core)

@@ -11,6 +11,7 @@ pub mod opengraph;
 pub mod redirects;
 pub mod robots;
 pub mod sitemap;
+pub mod structured_data;
 
 use std::sync::Arc;
 
@@ -52,6 +53,7 @@ pub fn page_auditors() -> Vec<Box<dyn PageAuditor>> {
         Box::new(images::ImagesAuditor),
         Box::new(redirects::RedirectsAuditor),
         Box::new(js_rendered::JsRenderedAuditor),
+        Box::new(structured_data::StructuredDataAuditor),
     ]
 }
 
