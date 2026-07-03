@@ -16,6 +16,9 @@ static SEL_A: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("a[href]").expect("invariant: valid CSS selector"));
 static SEL_SCRIPT_SRC: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("script[src]").expect("invariant: valid CSS selector"));
+static SEL_JSON_LD: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("script[type='application/ld+json']").expect("invariant: valid CSS selector")
+});
 static SEL_LINK_HREF: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("link[href]").expect("invariant: valid CSS selector"));
 static SEL_IFRAME_SRC: LazyLock<Selector> =
@@ -225,6 +228,17 @@ impl Dom {
     /// Used by JS-rendered detection.
     pub fn content_tag_count(&self) -> usize {
         self.html.select(&SEL_CONTENT_TAGS).count()
+    }
+
+    /// Raw text content of every `<script type="application/ld+json">` block.
+    ///
+    /// Returns owned `Vec<String>` so all scraper references are dropped before
+    /// the value is returned — safe to use across `.await` points.
+    pub fn json_ld_blocks(&self) -> Vec<String> {
+        self.html
+            .select(&SEL_JSON_LD)
+            .map(|el| el.text().collect::<String>())
+            .collect()
     }
 }
 
