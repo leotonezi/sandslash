@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
 use serde_json::Value;
 
 use crate::audit::{PageAuditor, finding};
@@ -6,22 +9,45 @@ use crate::parser::Dom;
 
 pub struct StructuredDataAuditor;
 
+/// Required fields per validated Schema.org @type.
+///
+/// Looked up once at first use; never rebuilt per call.
+static REQUIRED_FIELDS: LazyLock<HashMap<&'static str, &'static [&'static str]>> =
+    LazyLock::new(|| {
+        let mut m: HashMap<&'static str, &'static [&'static str]> = HashMap::new();
+        m.insert("Article", &["headline", "author", "datePublished"]);
+        m.insert("NewsArticle", &["headline", "author", "datePublished"]);
+        m.insert("BlogPosting", &["headline", "author", "datePublished"]);
+        m.insert("Product", &["name"]);
+        m.insert("BreadcrumbList", &["itemListElement"]);
+        m.insert("FAQPage", &["mainEntity"]);
+        m.insert("HowTo", &["name", "step"]);
+        m.insert("Organization", &["name"]);
+        m.insert("WebSite", &["name", "url"]);
+        m.insert("LocalBusiness", &["name", "address"]);
+        m
+    });
+
 impl PageAuditor for StructuredDataAuditor {
     fn id(&self) -> &'static str {
         "structured_data"
     }
 
     fn category(&self) -> Category {
-        Category::Metadata
+        Category::Structure
     }
 
     fn audit(&self, _page: &PageData, dom: &Dom) -> Vec<Finding> {
         let mut out = Vec::new();
         for block in dom.json_ld_blocks() {
+            // Skip empty or whitespace-only bodies — not an error.
+            if block.trim().is_empty() {
+                continue;
+            }
             match serde_json::from_str::<Value>(&block) {
                 Err(_) => out.push(finding(
-                    "structured_data.malformed_json",
-                    Category::Metadata,
+                    "jsonld.malformed",
+                    Category::Structure,
                     Severity::Warning,
                     10,
                     "JSON-LD block contains malformed JSON",
@@ -34,6 +60,9 @@ impl PageAuditor for StructuredDataAuditor {
 }
 
 /// Walk a parsed JSON-LD value, dispatching to `validate_object` for each node.
+///
+/// `@graph` arrays are flattened: the wrapper object is not validated as an
+/// entity; each element is validated independently.
 fn validate_node(node: &Value, out: &mut Vec<Finding>) {
     match node {
         Value::Array(arr) => {
@@ -42,7 +71,6 @@ fn validate_node(node: &Value, out: &mut Vec<Finding>) {
             }
         }
         Value::Object(obj) => {
-            // If object has a @graph key that is an array, validate each element.
             if let Some(Value::Array(graph)) = obj.get("@graph") {
                 for item in graph {
                     validate_node(item, out);
@@ -56,24 +84,14 @@ fn validate_node(node: &Value, out: &mut Vec<Finding>) {
     }
 }
 
-/// Validate a single JSON-LD object node for missing @context, @type, and
-/// type-specific required fields.
+/// Validate a single JSON-LD object node for missing `@type` and type-specific
+/// required fields.  Types not in the validated set emit `jsonld.unknown-type`.
 fn validate_object(obj: &serde_json::Map<String, Value>, out: &mut Vec<Finding>) {
-    if !obj.contains_key("@context") {
-        out.push(finding(
-            "structured_data.missing_context",
-            Category::Metadata,
-            Severity::Info,
-            5,
-            "JSON-LD block is missing @context",
-        ));
-    }
-
     let type_value = match obj.get("@type") {
         None => {
             out.push(finding(
-                "structured_data.missing_type",
-                Category::Metadata,
+                "jsonld.missing-type",
+                Category::Structure,
                 Severity::Warning,
                 10,
                 "JSON-LD block is missing @type",
@@ -83,7 +101,7 @@ fn validate_object(obj: &serde_json::Map<String, Value>, out: &mut Vec<Finding>)
         Some(v) => v,
     };
 
-    // @type may be a string or an array of strings.
+    // @type may be a string or an array of strings; other shapes are silently ignored.
     let types: Vec<&str> = match type_value {
         Value::String(s) => vec![s.as_str()],
         Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect(),
@@ -91,38 +109,44 @@ fn validate_object(obj: &serde_json::Map<String, Value>, out: &mut Vec<Finding>)
     };
 
     for type_name in &types {
-        check_required_fields(type_name, obj, out);
+        if REQUIRED_FIELDS.contains_key(type_name) {
+            check_required_fields(type_name, obj, out);
+        } else {
+            out.push(finding(
+                "jsonld.unknown-type",
+                Category::Structure,
+                Severity::Info,
+                0,
+                format!("JSON-LD @type \"{type_name}\" is not in the validated set"),
+            ));
+        }
     }
 }
 
-/// Emit `structured_data.missing_required_field` for each required field absent
-/// from the given object, based on its @type.
+/// Emit `jsonld.missing-required` for each required field absent from `obj`,
+/// based on the given `type_name`.  Empty arrays are treated as absent.
 fn check_required_fields(
     type_name: &str,
     obj: &serde_json::Map<String, Value>,
     out: &mut Vec<Finding>,
 ) {
-    let required: &[&str] = match type_name {
-        "Article" | "BlogPosting" | "NewsArticle" => &["headline", "author", "datePublished"],
-        "Product" => &["name"],
-        "BreadcrumbList" => &["itemListElement"],
-        "FAQPage" => &["mainEntity"],
-        // Unknown @type — no required-field findings.
-        _ => return,
+    let required = match REQUIRED_FIELDS.get(type_name) {
+        Some(fields) => *fields,
+        None => return,
     };
 
     for &field in required {
         let missing = match obj.get(field) {
             None => true,
-            // itemListElement must be a non-empty array.
+            // Empty array counts as missing (e.g. BreadcrumbList.itemListElement).
             Some(Value::Array(arr)) if arr.is_empty() => true,
             _ => false,
         };
 
         if missing {
             out.push(finding(
-                "structured_data.missing_required_field",
-                Category::Metadata,
+                "jsonld.missing-required",
+                Category::Structure,
                 Severity::Warning,
                 10,
                 format!("{type_name} is missing required field: {field}"),
@@ -156,29 +180,88 @@ mod tests {
         findings.iter().map(|f| f.check_id.as_str()).collect()
     }
 
-    // Helper: wrap JSON in a script block.
     fn html_with_jsonld(json: &str) -> String {
         format!(
             r#"<html><head><script type="application/ld+json">{json}</script></head><body></body></html>"#
         )
     }
 
-    // --- no blocks ---
+    // --- no JSON-LD blocks ---
     #[test]
     fn no_json_ld_blocks_zero_findings() {
         let f = audit("<html><head></head><body></body></html>");
         assert!(f.is_empty(), "expected no findings, got: {f:?}");
     }
 
-    // --- malformed JSON ---
+    // --- empty / whitespace-only block — skip, no finding ---
     #[test]
-    fn malformed_json_one_finding() {
+    fn empty_block_zero_findings() {
+        let f = audit(
+            r#"<html><head><script type="application/ld+json">   </script></head><body></body></html>"#,
+        );
+        assert!(
+            f.is_empty(),
+            "empty block must produce no findings, got: {f:?}"
+        );
+    }
+
+    // --- jsonld.malformed ---
+    #[test]
+    fn malformed_json_finding() {
         let f = audit(&html_with_jsonld("{ this is not json }"));
         assert_eq!(f.len(), 1);
-        assert_eq!(ids(&f), vec!["structured_data.malformed_json"]);
+        assert_eq!(f[0].check_id, "jsonld.malformed");
         assert_eq!(f[0].severity, Severity::Warning);
         assert_eq!(f[0].penalty, 10);
-        assert_eq!(f[0].category, Category::Metadata);
+        assert_eq!(f[0].category, Category::Structure);
+    }
+
+    // --- jsonld.missing-type ---
+    #[test]
+    fn missing_type_finding() {
+        let json = r#"{"headline": "H"}"#;
+        let f = audit(&html_with_jsonld(json));
+        assert_eq!(ids(&f), vec!["jsonld.missing-type"]);
+        assert_eq!(f[0].severity, Severity::Warning);
+        assert_eq!(f[0].penalty, 10);
+        assert_eq!(f[0].category, Category::Structure);
+    }
+
+    // --- missing @type returns early — no required-field check ---
+    #[test]
+    fn missing_type_no_required_field_findings() {
+        let json = r#"{"headline": "H"}"#;
+        let f = audit(&html_with_jsonld(json));
+        assert!(
+            !ids(&f).contains(&"jsonld.missing-required"),
+            "must not emit jsonld.missing-required when @type is absent"
+        );
+    }
+
+    // --- jsonld.unknown-type ---
+    #[test]
+    fn unknown_type_finding() {
+        let json = r#"{"@type": "WebPage"}"#;
+        let f = audit(&html_with_jsonld(json));
+        assert_eq!(ids(&f), vec!["jsonld.unknown-type"]);
+        assert_eq!(f[0].severity, Severity::Info);
+        assert_eq!(f[0].penalty, 0);
+        assert_eq!(f[0].category, Category::Structure);
+        assert!(
+            f[0].message.contains("WebPage"),
+            "message must name the type"
+        );
+    }
+
+    // --- unknown @type — no required-field findings ---
+    #[test]
+    fn unknown_type_no_required_field_findings() {
+        let json = r#"{"@type": "WebPage"}"#;
+        let f = audit(&html_with_jsonld(json));
+        assert!(
+            !ids(&f).contains(&"jsonld.missing-required"),
+            "unknown @type must not emit jsonld.missing-required"
+        );
     }
 
     // --- valid Article — zero findings ---
@@ -198,97 +281,79 @@ mod tests {
         );
     }
 
-    // --- missing @context ---
+    // --- jsonld.missing-required: Product missing name ---
     #[test]
-    fn missing_context_info_finding() {
-        let json =
-            r#"{"@type": "Article", "headline": "H", "author": "A", "datePublished": "2024"}"#;
-        let f = audit(&html_with_jsonld(json));
-        assert!(
-            ids(&f).contains(&"structured_data.missing_context"),
-            "expected missing_context, got: {ids:?}",
-            ids = ids(&f)
-        );
-        let ctx = f
-            .iter()
-            .find(|f| f.check_id == "structured_data.missing_context")
-            .unwrap();
-        assert_eq!(ctx.severity, Severity::Info);
-        assert_eq!(ctx.penalty, 5);
-        assert_eq!(ctx.category, Category::Metadata);
-    }
-
-    // --- missing @type ---
-    #[test]
-    fn missing_type_warning_finding() {
-        let json = r#"{"@context": "https://schema.org", "headline": "H"}"#;
-        let f = audit(&html_with_jsonld(json));
-        assert_eq!(ids(&f), vec!["structured_data.missing_type"]);
-        assert_eq!(f[0].severity, Severity::Warning);
-        assert_eq!(f[0].penalty, 10);
-        assert_eq!(f[0].category, Category::Metadata);
-    }
-
-    // --- missing @type also returns early, no required-field checks ---
-    #[test]
-    fn missing_type_no_required_field_findings() {
-        let json = r#"{"@context": "https://schema.org"}"#;
-        let f = audit(&html_with_jsonld(json));
-        assert!(
-            !ids(&f).contains(&"structured_data.missing_required_field"),
-            "should not emit required_field when @type is absent"
-        );
-    }
-
-    // --- Product missing name ---
-    #[test]
-    fn product_missing_name_one_finding() {
-        let json = r#"{"@context": "https://schema.org", "@type": "Product"}"#;
+    fn product_missing_name_finding() {
+        let json = r#"{"@type": "Product"}"#;
         let f = audit(&html_with_jsonld(json));
         let rf: Vec<_> = f
             .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
+            .filter(|f| f.check_id == "jsonld.missing-required")
             .collect();
-        assert_eq!(rf.len(), 1, "expected exactly 1 required_field finding");
-        assert!(rf[0].message.contains("Product"));
-        assert!(rf[0].message.contains("name"));
+        assert_eq!(rf.len(), 1, "expected exactly 1 jsonld.missing-required");
+        assert!(
+            rf[0].message.contains("Product"),
+            "message must name the type"
+        );
+        assert!(
+            rf[0].message.contains("name"),
+            "message must name the field"
+        );
         assert_eq!(rf[0].severity, Severity::Warning);
         assert_eq!(rf[0].penalty, 10);
-        assert_eq!(rf[0].category, Category::Metadata);
+        assert_eq!(rf[0].category, Category::Structure);
     }
 
-    // --- unknown @type — zero required-field findings ---
+    // --- @type as array of strings — all required fields present ---
     #[test]
-    fn unknown_type_no_required_field_findings() {
-        let json = r#"{"@context": "https://schema.org", "@type": "WebPage"}"#;
+    fn type_as_array_zero_findings() {
+        let json = r#"{"@type": ["Organization", "LocalBusiness"], "name": "Acme Corp", "address": "123 Main St"}"#;
         let f = audit(&html_with_jsonld(json));
         assert!(
-            !ids(&f).contains(&"structured_data.missing_required_field"),
-            "unknown @type must not emit required_field findings"
+            f.is_empty(),
+            "all required fields present for both types, expected zero findings, got: {f:?}"
         );
     }
 
-    // --- @graph with mixed nodes ---
+    // --- @type as array — one type missing a required field ---
+    #[test]
+    fn type_as_array_missing_field() {
+        // Organization requires name (present); LocalBusiness requires name+address (address absent).
+        let json = r#"{"@type": ["Organization", "LocalBusiness"], "name": "Acme Corp"}"#;
+        let f = audit(&html_with_jsonld(json));
+        let rf: Vec<_> = f
+            .iter()
+            .filter(|f| f.check_id == "jsonld.missing-required")
+            .collect();
+        assert_eq!(
+            rf.len(),
+            1,
+            "expected exactly 1 missing-required for address"
+        );
+        assert!(rf[0].message.contains("LocalBusiness"));
+        assert!(rf[0].message.contains("address"));
+    }
+
+    // --- @graph: each member validated independently ---
     #[test]
     fn graph_validates_each_element() {
         let json = r#"{
             "@context": "https://schema.org",
             "@graph": [
                 {"@type": "Product"},
-                {"@type": "BreadcrumbList"},
+                {"@type": "BreadcrumbList", "itemListElement": []},
                 {"@type": "FAQPage"}
             ]
         }"#;
         let f = audit(&html_with_jsonld(json));
         let rf: Vec<_> = f
             .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
+            .filter(|f| f.check_id == "jsonld.missing-required")
             .collect();
-        // Product → name, BreadcrumbList → itemListElement, FAQPage → mainEntity
         assert_eq!(
             rf.len(),
             3,
-            "expected 3 required_field findings, got: {rf:?}"
+            "expected 3 jsonld.missing-required findings, got: {rf:?}"
         );
         let msgs: Vec<&str> = rf.iter().map(|f| f.message.as_str()).collect();
         assert!(
@@ -305,24 +370,6 @@ mod tests {
         );
     }
 
-    // --- @graph nodes share @context from outer object, inner nodes missing @context ---
-    #[test]
-    fn graph_elements_missing_context_emit_finding() {
-        let json = r#"{
-            "@context": "https://schema.org",
-            "@graph": [
-                {"@type": "Product", "name": "Widget"}
-            ]
-        }"#;
-        // The @graph elements don't have their own @context; validate_object checks each one.
-        let f = audit(&html_with_jsonld(json));
-        // Product/name present → no required_field. But the inner node lacks @context.
-        assert!(
-            ids(&f).contains(&"structured_data.missing_context"),
-            "graph element without @context should emit missing_context"
-        );
-    }
-
     // --- Article missing headline and author ---
     #[test]
     fn article_missing_fields_findings() {
@@ -334,112 +381,138 @@ mod tests {
         let f = audit(&html_with_jsonld(json));
         let rf: Vec<_> = f
             .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
+            .filter(|f| f.check_id == "jsonld.missing-required")
             .collect();
         assert_eq!(
             rf.len(),
             2,
-            "expected 2 missing field findings (headline + author)"
+            "expected 2 jsonld.missing-required (headline + author)"
         );
         let msgs: Vec<&str> = rf.iter().map(|f| f.message.as_str()).collect();
         assert!(msgs.iter().any(|m| m.contains("headline")));
         assert!(msgs.iter().any(|m| m.contains("author")));
     }
 
-    // --- BreadcrumbList with empty itemListElement array ---
+    // --- BreadcrumbList with empty itemListElement ---
     #[test]
     fn breadcrumb_empty_list_element_finding() {
-        let json = r#"{
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "itemListElement": []
-        }"#;
+        let json = r#"{"@type": "BreadcrumbList", "itemListElement": []}"#;
         let f = audit(&html_with_jsonld(json));
         let rf: Vec<_> = f
             .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
+            .filter(|f| f.check_id == "jsonld.missing-required")
             .collect();
         assert_eq!(rf.len(), 1);
         assert!(rf[0].message.contains("itemListElement"));
     }
 
-    // --- all findings have Category::Metadata ---
+    // --- all findings carry Category::Structure ---
     #[test]
-    fn all_findings_category_metadata() {
+    fn all_findings_category_structure() {
         let html = r#"<html><head>
             <script type="application/ld+json">{bad json}</script>
-            <script type="application/ld+json">{"@context":"https://schema.org","@type":"Product"}</script>
+            <script type="application/ld+json">{"@type":"Product"}</script>
             </head><body></body></html>"#;
         let f = audit(html);
         assert!(!f.is_empty());
         for finding in &f {
             assert_eq!(
                 finding.category,
-                Category::Metadata,
+                Category::Structure,
                 "finding {:?} has wrong category",
                 finding.check_id
             );
         }
     }
 
-    // --- fixture-based tests ---
+    // --- fixture: valid Article → zero findings ---
     #[test]
-    fn fixture_article_valid_zero_findings() {
-        let html = include_str!("../../tests/fixtures/jsonld_article_valid.html");
+    fn fixture_valid_article_zero_findings() {
+        let html = include_str!("../../tests/fixtures/jsonld_valid_article.html");
         let f = audit(html);
         assert!(
             f.is_empty(),
-            "valid Article fixture should produce no findings, got: {f:?}"
+            "valid Article fixture must produce no findings, got: {f:?}"
         );
     }
 
+    // --- fixture: malformed → jsonld.malformed ---
     #[test]
-    fn fixture_malformed_one_finding() {
+    fn fixture_malformed_finding() {
         let html = include_str!("../../tests/fixtures/jsonld_malformed.html");
         let f = audit(html);
         assert_eq!(f.len(), 1);
-        assert_eq!(f[0].check_id, "structured_data.malformed_json");
+        assert_eq!(f[0].check_id, "jsonld.malformed");
+        assert_eq!(f[0].category, Category::Structure);
     }
 
-    #[test]
-    fn fixture_missing_context_finding() {
-        let html = include_str!("../../tests/fixtures/jsonld_missing_context.html");
-        let f = audit(html);
-        assert!(ids(&f).contains(&"structured_data.missing_context"));
-    }
-
+    // --- fixture: missing @type → jsonld.missing-type ---
     #[test]
     fn fixture_missing_type_finding() {
         let html = include_str!("../../tests/fixtures/jsonld_missing_type.html");
         let f = audit(html);
-        assert!(ids(&f).contains(&"structured_data.missing_type"));
-    }
-
-    #[test]
-    fn fixture_article_missing_fields() {
-        let html = include_str!("../../tests/fixtures/jsonld_article_missing_fields.html");
-        let f = audit(html);
-        let rf: Vec<_> = f
-            .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
-            .collect();
         assert!(
-            rf.len() >= 2,
-            "expected at least 2 missing required field findings"
+            ids(&f).contains(&"jsonld.missing-type"),
+            "expected jsonld.missing-type, got: {ids:?}",
+            ids = ids(&f)
+        );
+        assert!(
+            f.iter()
+                .filter(|f| f.check_id == "jsonld.missing-type")
+                .all(|f| f.category == Category::Structure)
         );
     }
 
+    // --- fixture: unknown @type → jsonld.unknown-type ---
+    #[test]
+    fn fixture_unknown_type_finding() {
+        let html = include_str!("../../tests/fixtures/jsonld_unknown_type.html");
+        let f = audit(html);
+        assert!(
+            ids(&f).contains(&"jsonld.unknown-type"),
+            "expected jsonld.unknown-type, got: {ids:?}",
+            ids = ids(&f)
+        );
+    }
+
+    // --- fixture: Article missing required fields → jsonld.missing-required ---
+    #[test]
+    fn fixture_missing_required_findings() {
+        let html = include_str!("../../tests/fixtures/jsonld_missing_required.html");
+        let f = audit(html);
+        let rf: Vec<_> = f
+            .iter()
+            .filter(|f| f.check_id == "jsonld.missing-required")
+            .collect();
+        assert!(
+            rf.len() >= 2,
+            "expected at least 2 jsonld.missing-required findings, got: {rf:?}"
+        );
+    }
+
+    // --- fixture: @graph → 3 jsonld.missing-required ---
     #[test]
     fn fixture_graph_mixed() {
         let html = include_str!("../../tests/fixtures/jsonld_graph.html");
         let f = audit(html);
         let rf: Vec<_> = f
             .iter()
-            .filter(|f| f.check_id == "structured_data.missing_required_field")
+            .filter(|f| f.check_id == "jsonld.missing-required")
             .collect();
         assert!(
             rf.len() >= 3,
-            "expected at least 3 required_field findings from @graph fixture, got: {rf:?}"
+            "expected at least 3 jsonld.missing-required from @graph fixture, got: {rf:?}"
+        );
+    }
+
+    // --- fixture: no JSON-LD blocks → zero findings ---
+    #[test]
+    fn fixture_none_zero_findings() {
+        let html = include_str!("../../tests/fixtures/jsonld_none.html");
+        let f = audit(html);
+        assert!(
+            f.is_empty(),
+            "no-JSON-LD fixture must produce no findings, got: {f:?}"
         );
     }
 }
